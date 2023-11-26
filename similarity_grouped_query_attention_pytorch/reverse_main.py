@@ -118,7 +118,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
 
     data_dir = "data"
     
-    cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:5%]")
+    cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:100%]")
     cnn_data_test = load_dataset("cnn_dailymail",data_dir=data_dir,split="test[:100%]")
     cnn_data_val = load_dataset("cnn_dailymail",data_dir=data_dir,split="validation[:100%]")
     
