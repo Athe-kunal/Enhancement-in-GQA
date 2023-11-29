@@ -8,6 +8,21 @@ from einops import einsum, rearrange, repeat
 from torch import nn
 from transformers.models.t5.modeling_t5 import T5Attention
 
+def mean_pool(key_or_value_heads,d_model,n_heads,kv_heads,h_dim):
+    '''
+    Please note that weight data is transpose of defined layer
+    For example, k = nn.Linear(in_features=512,out_features=64) will give shape of (64,512)
+    '''
+    #(inner_dim (512), d_model) -> (n_heads(8), h_dim(64),d_model)
+    key_or_value_heads = key_or_value_heads.weight.view(n_heads,h_dim,d_model)
+    
+    #(n_heads(8), h_dim(64),d_model) -> (#kv_heads, #headspergroup, h_dim(64),d_model) and mean along axis 1
+    key_or_value_heads = key_or_value_heads.view(kv_heads,n_heads//kv_heads,h_dim,d_model).mean(axis=1)
+    
+    #reshape to (h_dim*kv_heads,d_model)
+    key_or_value_heads = key_or_value_heads.view(kv_heads*h_dim,d_model)
+    return key_or_value_heads
+
 
 class T5GQA(nn.Module):
     def __init__(
@@ -84,6 +99,17 @@ class T5GQA(nn.Module):
         t5_gqa.k.weight.data = t5.k.weight.data
         t5_gqa.v.weight.data = t5.v.weight.data
         t5_gqa.o.weight.data = t5.o.weight.data
+
+        '''added part'''
+        modified_k_weights =  torch.nn.Parameter(mean_pool(t5_gqa.k,t5.d_model,t5.n_heads,kv_heads, t5.key_value_proj_dim))
+        t5_gqa.k = nn.Linear(in_features=t5.d_model, out_features=kv_heads * t5.key_value_proj_dim,bias=False)
+        t5_gqa.k.weight.data = modified_k_weights
+
+        modified_v_weights = torch.nn.Parameter(mean_pool(t5_gqa.v,t5.d_model,t5.n_heads,kv_heads,t5.key_value_proj_dim))
+        t5_gqa.v = nn.Linear(in_features = t5.d_model, out_features = kv_heads*t5.key_value_proj_dim,bias=False)
+        t5_gqa.v.weight.data = modified_v_weights
+        '''added part ended'''
+
         if t5.has_relative_attention_bias:
             t5_gqa.relative_attention_bias.weight.data = (
                 t5.relative_attention_bias.weight.data
@@ -130,6 +156,7 @@ class T5GQA(nn.Module):
             """projection"""
             # NOTE: Changed from the original definition in T5Attention.
             sequence_length = states.shape[1]
+            # return states.view(batch_size, -1, self.n_heads, self.key_value_proj_dim).transpose(1, 2)
             return states.view(
                 batch_size, sequence_length, -1, self.key_value_proj_dim
             ).transpose(1, 2)
@@ -171,8 +198,10 @@ class T5GQA(nn.Module):
                     hidden_states = past_key_value
             return hidden_states
 
+        print('q shape before shape:',self.q(hidden_states).shape)
         # get query states: (batch_size, n_heads, seq_length, dim_per_head)
         grouped_queries = shape(self.q(hidden_states))
+        
         # get key/value states
         key_states = project(
             hidden_states,
@@ -186,6 +215,9 @@ class T5GQA(nn.Module):
             key_value_states,
             past_key_value[1] if past_key_value is not None else None,
         )
+        if past_key_value is not None and  key_value_states is not None:
+            print('key_states_shape:',key_states.shape)
+        print('Before : q:',grouped_queries.shape, 'k:',key_states.shape,'v:',value_states.shape)
 
         # # compute scores
         # scores = torch.matmul(
@@ -198,7 +230,9 @@ class T5GQA(nn.Module):
             key_states, "b (g h) s d -> b g h s d", h=self.kv_heads
         ).mean(dim=1)
         scores = einsum(grouped_queries, grouped_keys, "b g h n d, b h s d -> b h n s")
-
+        
+        print('q:',grouped_queries.shape, 'k:',grouped_keys.shape, 'score:',scores.shape)
+        
         if position_bias is None:
             if not self.has_relative_attention_bias:
                 position_bias = torch.zeros(
@@ -246,18 +280,23 @@ class T5GQA(nn.Module):
         # Mask heads if we want to
         if layer_head_mask is not None:
             attn_weights = attn_weights * layer_head_mask
-
+        
+        print('atten_weights:',attn_weights.shape)
         # NOTE: This is different from the original in T5Attention!
         # attn_output = unshape(torch.matmul(attn_weights, value_states))
         grouped_values = rearrange(
             value_states, "b (g h) s d -> b g h s d", h=self.kv_heads
         ).mean(dim=1)
         attn_output = unshape(torch.matmul(attn_weights, grouped_values))
+        print('before repear:',attn_output.shape)
         attn_output = repeat(
             attn_output, "b s d -> b s (g d)", g=(self.n_heads // self.kv_heads)
         )
-        attn_output = self.o(attn_output)
 
+        print('values:',grouped_values.shape,'attn:',attn_output.shape)
+
+        attn_output = self.o(attn_output)
+        print('out:',attn_output.shape)
         present_key_value_state = (
             (key_states, value_states) if (self.is_decoder and use_cache) else None
         )
@@ -265,6 +304,7 @@ class T5GQA(nn.Module):
 
         if output_attentions:
             outputs = outputs + (attn_weights,)  # type: ignore
+  
         return outputs
 
 
