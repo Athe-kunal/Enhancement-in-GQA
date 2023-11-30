@@ -52,7 +52,8 @@ def get_tf_attention_dict(module,kv_heads:int=4):
     return tf_attention_dict
 
 def get_sim_score(query_heads_attn):
-    query_heads = torch.tensor_split(query_heads_attn,8,dim=1)
+    query_heads_attn_transposed = query_heads_attn.T
+    query_heads = torch.tensor_split(query_heads_attn_transposed,8,dim=1)
     sim_keys = ['kv_heads_'+str(i) for i in range(0,len(query_heads)//2)]
     sim_keys_dict = {key: 0.0 for key in sim_keys}
     for i in range(0,len(query_heads)-1,2):
