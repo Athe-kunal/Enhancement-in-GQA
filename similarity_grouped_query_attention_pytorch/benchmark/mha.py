@@ -65,26 +65,26 @@ if __name__ == '__main__':
     progress_bar = tqdm(range(num_training_steps))
     val_rouge_dict = {'rouge1': [], 'rouge2': [], 'rougeL': [], 'rougeLsum': [], 'gen_len': []}
 
-    for epoch in range(config.NUM_EPOCHS):
-        t5.train()
-        for batch in train_dataloader:
-            batch = {k: v.to(device) for k, v in batch.items()}
-            outputs = t5(**batch)
-            loss = outputs.loss
-            loss.backward()
+    # for epoch in range(config.NUM_EPOCHS):
+    #     t5.train()
+    #     for batch in train_dataloader:
+    #         batch = {k: v.to(device) for k, v in batch.items()}
+    #         outputs = t5(**batch)
+    #         loss = outputs.loss
+    #         loss.backward()
 
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()
-            progress_bar.update(1)
+    #         optimizer.step()
+    #         lr_scheduler.step()
+    #         optimizer.zero_grad()
+    #         progress_bar.update(1)
         
-        t5.eval()
-        eval_dict_list = []
-        for eval_batch in eval_dataloader:
-            eval_dict_list.append(compute_metrics(eval_batch,tokenizer,metric))
-        
-        key_names = eval_dict_list[0].keys()
-        average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
-        for k in average_dict.keys():
-            val_rouge_dict[k].append(average_dict[k])
+    t5.eval()
+    eval_dict_list = []
+    for eval_batch in eval_dataloader:
+        eval_dict_list.append(compute_metrics(eval_batch,tokenizer,metric))
+    
+    key_names = eval_dict_list[0].keys()
+    average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
+    for k in average_dict.keys():
+        val_rouge_dict[k].append(average_dict[k])
     wandb.log({"val_rouge_mha":val_rouge_dict})

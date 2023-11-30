@@ -283,7 +283,7 @@ if __name__=='__main__':
                 years of watching black people die at the hands of the police or vigilantes while calls for change went unmet.', 80'''
 
     input_ids = tokenizer("summarize:"+summ_text, return_tensors="pt").input_ids
-    outputs = t5.generate(input_ids, max_new_tokens=25)
+    outputs = t5.generate(input_ids, max_new_tokens=128)
     text = tokenizer.batch_decode(outputs[0], skip_special_tokens=True)
     print(f'Generated text with pretrained model: {text}')
     #convert t5 to gqa
@@ -293,6 +293,6 @@ if __name__=='__main__':
 
             t5_gqa.eval()
 
-            outputs = t5_gqa.generate(input_ids, max_new_tokens=25)
+            outputs = t5_gqa.generate(input_ids, max_new_tokens=128)
             text = tokenizer.batch_decode(outputs[0], skip_special_tokens=True)
             print(f'Generated text with kv_heads:{kv_heads} and similarity flag:{similarity_flag} : {text}')
