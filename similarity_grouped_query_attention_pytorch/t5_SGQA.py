@@ -8,7 +8,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers.models.t5.modeling_t5 import T5Attention, T5LayerSelfAttention, T5LayerCrossAttention
 
-
 def cosine_similarity(query_heads,key_heads,value_heads,num_heads):
 
     query_heads = torch.tensor_split(query_heads,num_heads,dim=0)

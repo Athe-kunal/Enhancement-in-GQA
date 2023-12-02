@@ -72,17 +72,6 @@ def get_sim_score(query_heads_attn):
         sim_keys_dict[f'kv_heads_{dict_name}']=[cosine_sim]
     return sim_keys_dict  
 
-def preprocess_function(examples,tokenizer,max_input_length:int=config.MAX_INPUT_LENGTH,max_target_length:int=config.MAX_TARGET_LENGTH):
-    prefix = "summarize: "
-    inputs = [prefix + doc for doc in examples["article"]]
-    model_inputs = tokenizer(inputs, max_length=max_input_length, truncation=True,padding=True)
-
-    # Setup the tokenizer for targets
-    labels = tokenizer(text_target=examples["highlights"], max_length=max_target_length, truncation=True)
-
-    model_inputs["labels"] = labels["input_ids"]
-    return model_inputs
-
 def compute_metrics(eval_batch,tokenizer,metric):
     predictions, labels = eval_batch['input_ids'],eval_batch['labels']
     decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
@@ -117,6 +106,17 @@ def reverse_train(model_name:str=config.MODEL_NAME):
     tokenizer =  AutoTokenizer.from_pretrained(model_name)
     data_collator = DataCollatorForSeq2Seq(tokenizer, model=t5)
 
+    def preprocess_function(examples,max_input_length:int=config.MAX_INPUT_LENGTH,max_target_length:int=config.MAX_TARGET_LENGTH):
+        prefix = "summarize: "
+        inputs = [prefix + doc for doc in examples["article"]]
+        model_inputs = tokenizer(inputs, max_length=max_input_length, truncation=True,padding=True)
+
+        # Setup the tokenizer for targets
+        labels = tokenizer(text_target=examples["highlights"], max_length=max_target_length, truncation=True)
+
+        model_inputs["labels"] = labels["input_ids"]
+        return model_inputs
+
     data_dir = "data"
     
     cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:100%]")
@@ -144,7 +144,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
 
     progress_bar = tqdm(range(num_training_steps))
     tf_attention_dict = get_tf_attention_dict(t5)
-    all_similarities_dict = defaultdict()
+    all_similarities_dict = {k:[] for k in config.GQA_LIST}
     val_rouge_dict = {'rouge1': [], 'rouge2': [], 'rougeL': [], 'rougeLsum': [], 'gen_len': []}
     for attn_name in config.GQA_LIST:
         #attn_name is encoder, decoder or cross-attention
@@ -235,7 +235,8 @@ def reverse_train(model_name:str=config.MODEL_NAME):
 
     
 
-
+if __name__ == '__main__':
+    reverse_train()
 
 
 
