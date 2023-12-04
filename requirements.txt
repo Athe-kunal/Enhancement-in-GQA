@@ -9,3 +9,6 @@ wandb
 #metrics
 rouge-score
 evaluate
+
+#tokenizer
+sentencepiece
