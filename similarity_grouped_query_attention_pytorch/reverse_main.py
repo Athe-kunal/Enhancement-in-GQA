@@ -102,7 +102,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
         model_name
     )
 
-    tokenizer =  AutoTokenizer.from_pretrained(model_name)
+    tokenizer =  AutoTokenizer.from_pretrained(model_name,legacy=False)
     data_collator = DataCollatorForSeq2Seq(tokenizer, model=t5)
 
     def preprocess_function(examples,max_input_length:int=config.MAX_INPUT_LENGTH,max_target_length:int=config.MAX_TARGET_LENGTH):
