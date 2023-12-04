@@ -18,6 +18,7 @@ import numpy as np
 from tqdm.auto import tqdm
 import wandb
 import matplotlib.pyplot as plt
+import torch.nn as nn
 
 wandb.login(key=config.WANDB_API_KEY)
 run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.GQA_LIST},entity=config.WANDB_ENTITY)
@@ -137,6 +138,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
     )
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    t5 = nn.DataParallel(t5) #use multiple gpus
     t5.to(device)
 
     metric = load("rouge")
@@ -190,6 +192,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
         average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
         for k in average_dict.keys():
             val_rouge_dict[k].append(average_dict[k])
+        print(f'val_rougue_{epoch}:{val_rouge_dict}')
         wandb.log({f"val_rouge_{epoch}":val_rouge_dict})
         # break
     wandb.log({"val_rouge":val_rouge_dict})
