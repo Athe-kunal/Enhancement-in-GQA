@@ -48,8 +48,8 @@ if __name__ == '__main__':
     tokenized_datasets_test = cnn_data_test.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
 
     train_dataloader = DataLoader(tokenized_datasets_train, shuffle=True, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
-    eval_dataloader = DataLoader(tokenized_datasets_val, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
-    test_dataloader = DataLoader(tokenized_datasets_test, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
+    eval_dataloader = DataLoader(tokenized_datasets_val, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator)
+    test_dataloader = DataLoader(tokenized_datasets_test, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator)
 
     num_training_steps = config.NUM_EPOCHS * len(train_dataloader)
     optimizer = AdamW(t5.parameters(), lr=5e-5)
@@ -80,11 +80,28 @@ if __name__ == '__main__':
         
         t5.eval()
         eval_dict_list = []
-        for eval_batch in eval_dataloader:
-            eval_dict_list.append(compute_metrics(eval_batch,tokenizer,metric))
+        print(f"Started evaluation for epoch {epoch}")
+        for eval_batch in tqdm(eval_dataloader):
+            eval_batch = {k: v.to(device) for k, v in eval_batch.items()}
+            eval_batch_pred_tensors = t5.generate(eval_batch['input_ids'])
+            eval_dict_list.append(compute_metrics(eval_batch_pred_tensors.cpu(),eval_batch['labels'].cpu(),tokenizer,metric))
+        
         
         key_names = eval_dict_list[0].keys()
         average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
         for k in average_dict.keys():
             val_rouge_dict[k].append(average_dict[k])
+
+        wandb.log({f"val_rouge_gqa_{epoch}":val_rouge_dict})
+
     wandb.log({"val_rouge_gqa":val_rouge_dict})
+
+    test_dict_list = []
+    for test_batch in test_dataloader:
+        test_batch = {k: v.to(device) for k, v in test_batch.items()}
+        test_batch_pred_tensors = t5.generate(test_batch['input_ids'])
+        test_dict_list.append(compute_metrics(test_batch_pred_tensors.cpu(),test_batch['labels'].cpu(),tokenizer,metric))
+    
+    key_names = test_dict_list[0].keys()
+    test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
+    wandb.log({"test_rouge_gqa":test_rouge_dict})
