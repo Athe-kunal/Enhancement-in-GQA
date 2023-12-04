@@ -24,7 +24,7 @@ from tqdm.auto import tqdm
 import wandb
 import matplotlib.pyplot as plt
 from t5_SGQA import convert_t5_to_gqa
-from reverse_main import preprocess_function,compute_metrics, get_avg
+from reverse_main import compute_metrics, get_avg
 
 if __name__ == '__main__':
     wandb.login(key=config.WANDB_API_KEY)
@@ -42,7 +42,16 @@ if __name__ == '__main__':
     cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:100%]")
     cnn_data_test = load_dataset("cnn_dailymail",data_dir=data_dir,split="test[:100%]")
     cnn_data_val = load_dataset("cnn_dailymail",data_dir=data_dir,split="validation[:100%]")
+    def preprocess_function(examples,max_input_length:int=config.MAX_INPUT_LENGTH,max_target_length:int=config.MAX_TARGET_LENGTH):
+        prefix = "summarize: "
+        inputs = [prefix + doc for doc in examples["article"]]
+        model_inputs = tokenizer(inputs, max_length=max_input_length, truncation=True,padding=True)
 
+        # Setup the tokenizer for targets
+        labels = tokenizer(text_target=examples["highlights"], max_length=max_target_length, truncation=True)
+
+        model_inputs["labels"] = labels["input_ids"]
+        return model_inputs
     tokenized_datasets_train = cnn_data_train.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
     tokenized_datasets_val = cnn_data_val.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
     tokenized_datasets_test = cnn_data_test.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
