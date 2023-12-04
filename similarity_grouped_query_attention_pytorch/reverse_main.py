@@ -72,8 +72,7 @@ def get_sim_score(query_heads_attn):
         sim_keys_dict[f'kv_heads_{dict_name}']=[cosine_sim]
     return sim_keys_dict  
 
-def compute_metrics(eval_batch,tokenizer,metric):
-    predictions, labels = eval_batch['input_ids'],eval_batch['labels']
+def compute_metrics(predictions,labels,tokenizer,metric):
     decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
     # Replace -100 in the labels as we can't decode them.
     labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
@@ -163,7 +162,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
             lr_scheduler.step()
             optimizer.zero_grad()
             progress_bar.update(1)
-            break
+            # break
         t5.eval()
         tf_attention_dict = get_tf_attention_dict(t5)
         curr_similarities_dict = defaultdict(list)
@@ -181,15 +180,18 @@ def reverse_train(model_name:str=config.MODEL_NAME):
                     all_similarities_dict[attn_name][idx][attn_heads].extend(curr_val)
         
         eval_dict_list = []
-        for eval_batch in eval_dataloader:
-            eval_batch_pred = t5(**eval_batch)
-            eval_dict_list.append(compute_metrics(eval_batch_pred,tokenizer,metric))
+        print(f"Started evaluation for epoch {epoch}")
+        for eval_batch in tqdm(eval_dataloader):
+            eval_batch = {k: v.to(device) for k, v in eval_batch.items()}
+            eval_batch_pred_tensors = t5.generate(eval_batch['input_ids'])
+            eval_dict_list.append(compute_metrics(eval_batch_pred_tensors.cpu(),eval_batch['labels'].cpu(),tokenizer,metric))
         
         key_names = eval_dict_list[0].keys()
         average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
         for k in average_dict.keys():
             val_rouge_dict[k].append(average_dict[k])
-        break
+        wandb.log({f"val_rouge_{epoch}":val_rouge_dict})
+        # break
     wandb.log({"val_rouge":val_rouge_dict})
 
     #Plotting
@@ -227,7 +229,9 @@ def reverse_train(model_name:str=config.MODEL_NAME):
     wandb.log({f"{config.MODEL_NAME}_PLOT":fig})
     test_dict_list = []
     for test_batch in test_dataloader:
-        test_dict_list.append(compute_metrics(test_batch,tokenizer,metric))
+        test_batch = {k: v.to(device) for k, v in test_batch.items()}
+        test_batch_pred_tensors = t5.generate(test_batch['input_ids'])
+        test_dict_list.append(compute_metrics(test_batch_pred_tensors.cpu(),test_batch['labels'].cpu(),tokenizer,metric))
     
     key_names = test_dict_list[0].keys()
     test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
