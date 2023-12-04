@@ -163,7 +163,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
             lr_scheduler.step()
             optimizer.zero_grad()
             progress_bar.update(1)
-        
+            break
         t5.eval()
         tf_attention_dict = get_tf_attention_dict(t5)
         curr_similarities_dict = defaultdict(list)
@@ -182,12 +182,14 @@ def reverse_train(model_name:str=config.MODEL_NAME):
         
         eval_dict_list = []
         for eval_batch in eval_dataloader:
-            eval_dict_list.append(compute_metrics(eval_batch,tokenizer,metric))
+            eval_batch_pred = t5(**eval_batch)
+            eval_dict_list.append(compute_metrics(eval_batch_pred,tokenizer,metric))
         
         key_names = eval_dict_list[0].keys()
         average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
         for k in average_dict.keys():
             val_rouge_dict[k].append(average_dict[k])
+        break
     wandb.log({"val_rouge":val_rouge_dict})
 
     #Plotting

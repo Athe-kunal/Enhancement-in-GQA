@@ -34,7 +34,7 @@ if __name__ == '__main__':
     t5: T5ForConditionalGeneration = T5ForConditionalGeneration.from_pretrained("t5-small")
     tokenizer = T5Tokenizer.from_pretrained("t5-small", legacy=False)
 
-    t5 = convert_t5_to_gqa(t5,kv_heads=4, similarity_flag=True, inplace=False)
+    t5 = convert_t5_to_gqa(t5,kv_heads=1, similarity_flag=True, inplace=False)
 
     data_collator = DataCollatorForSeq2Seq(tokenizer, model=t5)
 
