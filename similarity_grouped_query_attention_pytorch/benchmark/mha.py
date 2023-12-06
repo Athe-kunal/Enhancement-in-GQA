@@ -52,26 +52,26 @@ if __name__ == '__main__':
 
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
-    tokenized_datasets_train = cnn_data_train.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
+    # tokenized_datasets_train = cnn_data_train.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
     tokenized_datasets_val = cnn_data_val.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
     tokenized_datasets_test = cnn_data_test.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
 
-    train_dataloader = DataLoader(tokenized_datasets_train, shuffle=True, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
-    eval_dataloader = DataLoader(tokenized_datasets_val, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
-    test_dataloader = DataLoader(tokenized_datasets_test, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
+    # train_dataloader = DataLoader(tokenized_datasets_train, shuffle=True, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
+    eval_dataloader = DataLoader(tokenized_datasets_val, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator)
+    test_dataloader = DataLoader(tokenized_datasets_test, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator)
 
-    num_training_steps = config.NUM_EPOCHS * len(train_dataloader)
-    optimizer = AdamW(t5.parameters(), lr=5e-5)
-    lr_scheduler = get_scheduler(
-        name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
-    )
+    # num_training_steps = config.NUM_EPOCHS * len(train_dataloader)
+    # optimizer = AdamW(t5.parameters(), lr=5e-5)
+    # lr_scheduler = get_scheduler(
+        # name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
+    # )
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     t5.to(device)
 
     metric = load("rouge")
 
-    progress_bar = tqdm(range(num_training_steps))
+    # progress_bar = tqdm(range(num_training_steps))
     val_rouge_dict = {'rouge1': [], 'rouge2': [], 'rougeL': [], 'rougeLsum': [], 'gen_len': []}
 
     # for epoch in range(config.NUM_EPOCHS):
