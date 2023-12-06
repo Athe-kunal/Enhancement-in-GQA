@@ -29,9 +29,9 @@ def create_t5_config_from_block(block):
 def mean_pool(key_or_value_heads,d_model,n_heads,kv_heads,h_dim):
     '''
     Please note that weight data is transpose of defined layer
-    For example, k = nn.Linear(in_features=512,out_features=64) will give shape of (64,512)
+    For example, k = nn.Linear(in_features=512,out_features=256) will give shape of (256,512)
     '''
-    #(inner_dim (512), d_model) -> (n_heads(8), h_dim(64),d_model)
+    #(inner_dim, d_model) -> (n_heads(8), h_dim(64),d_model)
     key_or_value_heads = key_or_value_heads.view(n_heads,h_dim,d_model)
     
     #(n_heads(8), h_dim(64),d_model) -> (#kv_heads, #headspergroup, h_dim(64),d_model) and mean along axis 1
@@ -47,10 +47,11 @@ def add_pool(key_or_value_heads,d_model,n_heads,kv_heads,h_dim):
     For example, k = nn.Linear(in_features=512,out_features=64) will give shape of (64,512)
     '''
     #(inner_dim (512), d_model) -> (n_heads(8), h_dim(64),d_model)
+    # print(key_or_value_heads.shape)
     key_or_value_heads = key_or_value_heads.view(n_heads,h_dim,d_model)
     
-    #(n_heads(8), h_dim(64),d_model) -> (#kv_heads, #headspergroup, h_dim(64),d_model) and mean along axis 1
-    key_or_value_heads = key_or_value_heads.view(kv_heads,n_heads//kv_heads,h_dim,d_model).add(axis=1)
+    #(n_heads(8), h_dim(64),d_model) -> (#kv_heads, #headspergroup, h_dim(64),d_model) and add along axis 1
+    key_or_value_heads = 2*key_or_value_heads.view(kv_heads,n_heads//kv_heads,h_dim,d_model).mean(axis=1)
     
     #reshape to (h_dim*kv_heads,d_model)
     key_or_value_heads = key_or_value_heads.view(kv_heads*h_dim,d_model)
@@ -127,8 +128,8 @@ class WT5GQA(nn.Module):
                 })
         else:
             params = nn.ParameterDict({
-                f"key_{idx}": nn.Parameter(torch.full((t5.n_heads,1),0.5)),
-                f"value_{idx}": nn.Parameter(torch.full((t5.n_heads,1),0.5)),
+                f"key_{idx}": nn.Parameter(torch.full((t5.n_heads,1),1.0)),
+                f"value_{idx}": nn.Parameter(torch.full((t5.n_heads,1),1.0)),
                 })
 
 
@@ -234,7 +235,26 @@ class WT5GQA(nn.Module):
         query_states = shape(self.q(hidden_states))  # (batch_size, n_heads, seq_length, dim_per_head)
 
         # get key/value states
-        # print(self.k.shape,self.v.shape)
+        # print(self.k) #Linear layer with (512,512)
+        # print(query_states.shape)
+        #(512,512) key matrix --> 8 x (512,64) (after taking transpose) (512,8,64)--> (512,4,2,64) --> add pool 3rd dimension --> (512,4,1,64) 
+        # (512,4,2,64) repeat interleave
+        #After taking projection
+        # (batch_size, seq_lenth,512) @ (512,256) --> (batch_size,seq_length,256) --> (batch_size,seq_length,4,64) --> (batch_size,seq_length,8,64)
+
+        #k- (512,256)  --> (512,512)
+        # self.k_agg = add_pool(key_states,self.d_model,self.n_heads,self.kv_heads,self.d_model//self.n_heads)
+        # self.v_agg = add_pool(value_states,self.d_model,self.n_heads,self.kv_heads,self.d_model//self.n_heads)
+        k_weight_data = add_pool(self.k.weight.data,d_model=self.d_model,n_heads=self.n_heads,kv_heads=self.kv_heads,h_dim=self.d_model//self.n_heads) #(256,512)
+        k_weight_data = k_weight_data.view(self.kv_heads,self.d_model//self.n_heads,self.d_model).repeat_interleave(self.n_heads//self.kv_heads,dim=0)
+        k_weight_data = torch.reshape(k_weight_data,(-1,self.d_model))
+        self.k.weight.data = k_weight_data
+        # print(k_weight_data.shape)
+        v_weight_data = add_pool(self.v.weight.data,d_model=self.d_model,n_heads=self.n_heads,kv_heads=self.kv_heads,h_dim=self.d_model//self.n_heads) #(256,512)
+        v_weight_data = v_weight_data.view(self.kv_heads,self.d_model//self.n_heads,self.d_model).repeat_interleave(self.n_heads//self.kv_heads,dim=0)
+        v_weight_data = torch.reshape(v_weight_data,(-1,self.d_model))
+        self.v.weight.data = v_weight_data
+
         key_states = project(
             hidden_states, self.k, key_value_states, past_key_value[0] if past_key_value is not None else None
         )
@@ -249,10 +269,10 @@ class WT5GQA(nn.Module):
         # value_states = value_states.repeat_interleave(self.n_heads//self.kv_heads,dim=1)
 
         # compute scores
-        key_states = add_pool(key_states,self.d_model,self.n_heads,self.kv_heads,self.d_model//self.n_heads)
+        # print(key_states.shape)
         
         scores = torch.matmul(
-            query_states, key_states.repeat_interleave(self.n_heads//self.kv_heads,dim=1).transpose(3, 2) #changed here
+            query_states, key_states.transpose(3, 2) #changed here
         )  # equivalent of torch.einsum("bnqd,bnkd->bnqk", query_states, key_states), compatible with onnx op>9
 
         if position_bias is None:
@@ -263,7 +283,7 @@ class WT5GQA(nn.Module):
                 if self.gradient_checkpointing and self.training:
                     position_bias.requires_grad = True
             else:
-                position_bias = self.compute_bias(real_seq_length, key_length, device=scores.device)
+                position_bias = T5Attention.compute_bias(self,real_seq_length, key_length, device=scores.device)
 
             # if key and values are already calculated
             # we want only the last query position bias
@@ -291,8 +311,8 @@ class WT5GQA(nn.Module):
         # Mask heads if we want to
         if layer_head_mask is not None:
             attn_weights = attn_weights * layer_head_mask
-        value_states = add_pool(value_states,self.d_model,self.n_heads,self.kv_heads,self.d_model//self.n_heads)
-        attn_output = unshape(torch.matmul(attn_weights, value_states.repeat_interleave(self.n_heads//self.kv_heads,dim=1)))  # (batch_size, seq_length, dim) #changed here
+        # value_states = add_pool(value_states,self.d_model,self.n_heads,self.kv_heads,self.d_model//self.n_heads)
+        attn_output = unshape(torch.matmul(attn_weights, value_states)) # (batch_size, seq_length, dim) #changed here
         attn_output = self.o(attn_output)
 
         present_key_value_state = (key_states, value_states) if (self.is_decoder and use_cache) else None
@@ -348,14 +368,14 @@ if __name__=='__main__':
                 he died to an international movement from Rome to Rio de Janeiro — has reflected the depth of frustration borne of 
                 years of watching black people die at the hands of the police or vigilantes while calls for change went unmet.', 80'''
 
-    input_ids = tokenizer("summarize:"+summ_text, return_tensors="pt").input_ids
+    input_ids = tokenizer("summarize: "+summ_text, return_tensors="pt").input_ids
     outputs = t5.generate(input_ids, max_new_tokens=128)
     text = tokenizer.batch_decode(outputs[0], skip_special_tokens=True)
     print(f'Generated text with pretrained model: {text}')
     #convert t5 to gqa
-    for kv_heads in [4]:
+    for kv_heads in [8]:
         t5_wgqa = main_convert_t5_to_gqa(t5,kv_heads=kv_heads,inplace=False)
-
+        # print(t5_wgqa)
         t5_wgqa.eval()
 
         outputs = t5_wgqa.generate(input_ids, max_new_tokens=128)
