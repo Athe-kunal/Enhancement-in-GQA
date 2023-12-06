@@ -172,6 +172,8 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
         key_names = test_dict_list[0].keys()
         test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
         wandb.log({"test_rouge":test_rouge_dict})
+        # Save only on the master process
+        torch.save(t5.module.state_dict(), "t5_finetuned.pth")
 
         return val_rouge_dict,test_rouge_dict
 
