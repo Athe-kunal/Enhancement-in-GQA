@@ -89,6 +89,16 @@ class WT5GQA(nn.Module):
         self.k = nn.Linear(self.d_model, self.inner_dim, bias=False)
         self.v = nn.Linear(self.d_model, self.inner_dim, bias=False)
         self.o = nn.Linear(self.inner_dim, self.d_model, bias=False)
+        if IF_RANDOM:
+            self.params = nn.ParameterDict({
+                f"key_{idx}": nn.Parameter(torch.randn((self.n_heads,1))),
+                f"value_{idx}": nn.Parameter(torch.randn((self.n_heads,1))),
+                })
+        else:
+            self.params = nn.ParameterDict({
+                f"key_{idx}": nn.Parameter(torch.full((self.n_heads,1),0.5)),
+                f"value_{idx}": nn.Parameter(torch.full((self.n_heads,1),0.5)),
+                })
         if self.has_relative_attention_bias:
             self.relative_attention_bias = nn.Embedding(
                 self.relative_attention_num_buckets, self.n_heads
@@ -128,8 +138,8 @@ class WT5GQA(nn.Module):
                 })
         else:
             params = nn.ParameterDict({
-                f"key_{idx}": nn.Parameter(torch.full((t5.n_heads,1),1.0)),
-                f"value_{idx}": nn.Parameter(torch.full((t5.n_heads,1),1.0)),
+                f"key_{idx}": nn.Parameter(torch.full((t5.n_heads,1),0.5)),
+                f"value_{idx}": nn.Parameter(torch.full((t5.n_heads,1),0.5)),
                 })
 
 
@@ -375,7 +385,7 @@ if __name__=='__main__':
     #convert t5 to gqa
     for kv_heads in [8]:
         t5_wgqa = main_convert_t5_to_gqa(t5,kv_heads=kv_heads,inplace=False)
-        # print(t5_wgqa)
+        print(t5_wgqa)
         t5_wgqa.eval()
 
         outputs = t5_wgqa.generate(input_ids, max_new_tokens=128)
