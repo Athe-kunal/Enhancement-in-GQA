@@ -51,7 +51,7 @@ def add_pool(key_or_value_heads,d_model,n_heads,kv_heads,h_dim):
     key_or_value_heads = key_or_value_heads.view(n_heads,h_dim,d_model)
     
     #(n_heads(8), h_dim(64),d_model) -> (#kv_heads, #headspergroup, h_dim(64),d_model) and add along axis 1
-    key_or_value_heads = 2*key_or_value_heads.view(kv_heads,n_heads//kv_heads,h_dim,d_model).mean(axis=1)
+    key_or_value_heads = key_or_value_heads.view(kv_heads,n_heads//kv_heads,h_dim,d_model).sum(axis=1)
     
     #reshape to (h_dim*kv_heads,d_model)
     key_or_value_heads = key_or_value_heads.view(kv_heads*h_dim,d_model)
@@ -335,7 +335,7 @@ class WT5GQA(nn.Module):
 
 def main_convert_t5_to_gqa(module,kv_heads:int,inplace:bool=False):
     idx = 0
-    def convert_t5_to_gqa(module, kv_heads: int,weight_flag:bool=False,inplace: bool = False,curr_name:str='',idx:int=0):
+    def convert_t5_to_gqa(module, kv_heads: int,idx:int,weight_flag:bool=False,inplace: bool = False,curr_name:str=''):
         """Get the list of attention modules based on the flag about encoder, decoder or cross-attention
 
         Args:
@@ -380,12 +380,12 @@ if __name__=='__main__':
 
     input_ids = tokenizer("summarize: "+summ_text, return_tensors="pt").input_ids
     outputs = t5.generate(input_ids, max_new_tokens=128)
-    text = tokenizer.batch_decode(outputs[0], skip_special_tokens=True)
+    text = tokenizer.batch_decode(outputs[0], skip_special_tokens=False)
     print(f'Generated text with pretrained model: {text}')
     #convert t5 to gqa
     for kv_heads in [8]:
         t5_wgqa = main_convert_t5_to_gqa(t5,kv_heads=kv_heads,inplace=False)
-        print(t5_wgqa)
+        # print(t5_wgqa)
         t5_wgqa.eval()
 
         outputs = t5_wgqa.generate(input_ids, max_new_tokens=128)

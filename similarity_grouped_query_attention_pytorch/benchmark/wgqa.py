@@ -22,7 +22,7 @@ import numpy as np
 from tqdm.auto import tqdm
 import wandb
 import matplotlib.pyplot as plt
-from t5_SGQA import convert_t5_to_gqa
+from t5_WGQA import main_convert_t5_to_gqa
 import torch.nn as nn
 import torch.distributed as dist
 import os
@@ -70,7 +70,7 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
     t5: T5ForConditionalGeneration = T5ForConditionalGeneration.from_pretrained(
         model_name
     )
-    t5 = convert_t5_to_gqa(t5,kv_heads=1)
+    t5 = main_convert_t5_to_gqa(t5,kv_heads=4)
     t5.to(rank)
     t5 = torch.nn.parallel.DistributedDataParallel(t5, device_ids=[rank])
 
@@ -149,8 +149,8 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
                 eval_batch_pred_tensors = t5.module.generate(eval_batch['input_ids'])
                 eval_dict_list.append(compute_metrics(eval_batch_pred_tensors.cpu(), eval_batch['labels'].cpu(), tokenizer, metric))
             artifact = wandb.Artifact('model', type='model')
-            torch.save(t5.module.state_dict(), f"mqa_t5_finetuned_{epoch}.pth")
-            artifact.add_file(f"mqa_t5_finetuned_{epoch}.pth")
+            torch.save(t5.module.state_dict(), f"wgqa_t5_finetuned_{epoch}.pth")
+            artifact.add_file(f"wgqa_t5_finetuned_{epoch}.pth")
         # eval_dict_list = []
         # print(f"Started evaluation for epoch {epoch}")
         # for eval_batch in tqdm(eval_dataloader):
@@ -163,10 +163,10 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
             for k in average_dict.keys():
                 val_rouge_dict[k].append(average_dict[k])
             print(f'Epoch==.{epoch} val rogue {val_rouge_dict}')
-            wandb.log({f"mqa_val_{epoch}_"+k:v for k,v in val_rouge_dict.items()})
+            wandb.log({f"wgqa_val_{epoch}_"+k:v for k,v in val_rouge_dict.items()})
             # wandb.log({f"val_rouge_{epoch}":val_rouge_dict})
         # break
-    wandb.log({"mqa_val_"+k:v for k,v in val_rouge_dict.items()})
+    wandb.log({"wgqa_val_"+k:v for k,v in val_rouge_dict.items()})
     if rank==0:
         test_dict_list = []
         for test_batch in test_dataloader:
@@ -176,9 +176,8 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
         
         key_names = test_dict_list[0].keys()
         test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
-        wandb.log({"mqa_test_"+k:v for k,v in test_rouge_dict.items()})
+        wandb.log({"wgqa_test_"+k:v for k,v in test_rouge_dict.items()})
         # Save only on the master process
-        # torch.save(t5.module.state_dict(), "mqa_t5_finetuned.pth")
 
         return val_rouge_dict,test_rouge_dict
 
@@ -191,7 +190,7 @@ def main(rank, world_size):
 
 if __name__ == '__main__':
     wandb.login(key=config.WANDB_API_KEY)
-    run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.GQA_LIST},entity=config.WANDB_ENTITY,name="MQA")
+    run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.GQA_LIST},entity=config.WANDB_ENTITY,name="WGQA")
 
     world_size = torch.cuda.device_count()
     torch.multiprocessing.spawn(main, args=(world_size,), nprocs=world_size, join=True)

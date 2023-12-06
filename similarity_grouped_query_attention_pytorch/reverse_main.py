@@ -20,7 +20,7 @@ import wandb
 import matplotlib.pyplot as plt
 
 wandb.login(key=config.WANDB_API_KEY)
-run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.GQA_LIST},entity=config.WANDB_ENTITY)
+run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.REVERSE_GQA_LIST},entity=config.WANDB_ENTITY)
 
 def get_tf_attention_dict(module,kv_heads:int=4):
     transfer_to_gqa: List[str] = ["encoder","decoder","EncDecAttention"]
@@ -143,9 +143,9 @@ def reverse_train(model_name:str=config.MODEL_NAME):
 
     progress_bar = tqdm(range(num_training_steps))
     tf_attention_dict = get_tf_attention_dict(t5)
-    all_similarities_dict = {k:[] for k in config.GQA_LIST}
+    all_similarities_dict = {k:[] for k in config.REVERSE_GQA_LIST}
     val_rouge_dict = {'rouge1': [], 'rouge2': [], 'rougeL': [], 'rougeLsum': [], 'gen_len': []}
-    for attn_name in config.GQA_LIST:
+    for attn_name in config.REVERSE_GQA_LIST:
         #attn_name is encoder, decoder or cross-attention
         for attn_layer in tf_attention_dict[attn_name]:
             all_similarities_dict[attn_name].append(get_sim_score(attn_layer.q.weight.data))
@@ -167,7 +167,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
         tf_attention_dict = get_tf_attention_dict(t5)
         curr_similarities_dict = defaultdict(list)
 
-        for attn_name in config.GQA_LIST:
+        for attn_name in config.REVERSE_GQA_LIST:
             #attn_name is encoder, decoder or cross-attention
             for attn_layer in tf_attention_dict[attn_name]:
                 curr_similarities_dict[attn_name].append(get_sim_score(attn_layer.q.weight.data))

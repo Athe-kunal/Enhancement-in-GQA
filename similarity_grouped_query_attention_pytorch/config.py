@@ -5,6 +5,7 @@ BATCH_SIZE = 8
 NUM_EPOCHS = 10
 LEARNING_RATE = 5e-5
 GQA_LIST = ['decoder','EncDecAttention']
+REVERSE_GQA_LIST = ['encoder','decoder','EncDecAttention']
 WANDB_API_KEY = "70e95a405ea4aec8d0a637460407bf21c69436f4"
 WANDB_PROJECT = "similarity_gqa"
 WANDB_ENTITY = "athe_kunal"

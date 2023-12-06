@@ -98,7 +98,7 @@ if __name__ == '__main__':
     average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
     for k in average_dict.keys():
         val_rouge_dict[k].append(average_dict[k])
-    wandb.log({"val_rouge_mha":val_rouge_dict})
+    wandb.log({"mha_val_"+k:v for k,v in val_rouge_dict.items()})
 
     test_dict_list = []
     for test_batch in test_dataloader:
@@ -108,5 +108,5 @@ if __name__ == '__main__':
     
     key_names = test_dict_list[0].keys()
     test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
-    wandb.log({"test_rouge_mha":test_rouge_dict})
+    wandb.log({"mha_test_"+k:v for k,v in test_rouge_dict.items()})
 
