@@ -118,9 +118,9 @@ def reverse_train(model_name:str=config.MODEL_NAME):
 
     data_dir = "data"
     
-    cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:100%]")
-    cnn_data_test = load_dataset("cnn_dailymail",data_dir=data_dir,split="test[:100%]")
-    cnn_data_val = load_dataset("cnn_dailymail",data_dir=data_dir,split="validation[:100%]")
+    cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:50%]")
+    cnn_data_test = load_dataset("cnn_dailymail",data_dir=data_dir,split="test[:50%]")
+    cnn_data_val = load_dataset("cnn_dailymail",data_dir=data_dir,split="validation[:50%]")
     
     tokenized_datasets_train = cnn_data_train.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
     tokenized_datasets_val = cnn_data_val.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
@@ -150,7 +150,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
         for attn_layer in tf_attention_dict[attn_name]:
             all_similarities_dict[attn_name].append(get_sim_score(attn_layer.q.weight.data))
 
-    for epoch in range(config.NUM_EPOCHS):
+    for epoch in range(50):
         t5.train()
         for batch in train_dataloader:
             batch = {k: v.to(device) for k, v in batch.items()}

@@ -9,6 +9,6 @@ REVERSE_GQA_LIST = ['encoder','decoder','EncDecAttention']
 WANDB_API_KEY = "70e95a405ea4aec8d0a637460407bf21c69436f4"
 WANDB_PROJECT = "similarity_gqa"
 WANDB_ENTITY = "athe_kunal"
-VAL_BATCH_SIZE = 64
+VAL_BATCH_SIZE = 8
 IF_RANDOM=False
 
