@@ -101,14 +101,14 @@ class T5GQA(nn.Module):
         t5_gqa.o.weight.data = t5.o.weight.data
 
         '''added part'''
-        modified_k_weights =  torch.nn.Parameter(mean_pool(t5_gqa.k,t5.d_model,t5.n_heads,kv_heads, t5.key_value_proj_dim))
-        t5_gqa.k = nn.Linear(in_features=t5.d_model, out_features=kv_heads * t5.key_value_proj_dim,bias=False)
-        t5_gqa.k.weight.data = modified_k_weights
+        # modified_k_weights =  torch.nn.Parameter(mean_pool(t5_gqa.k,t5.d_model,t5.n_heads,kv_heads, t5.key_value_proj_dim))
+        # t5_gqa.k = nn.Linear(in_features=t5.d_model, out_features=kv_heads * t5.key_value_proj_dim,bias=False)
+        # t5_gqa.k.weight.data = modified_k_weights
 
-        modified_v_weights = torch.nn.Parameter(mean_pool(t5_gqa.v,t5.d_model,t5.n_heads,kv_heads,t5.key_value_proj_dim))
-        t5_gqa.v = nn.Linear(in_features = t5.d_model, out_features = kv_heads*t5.key_value_proj_dim,bias=False)
-        t5_gqa.v.weight.data = modified_v_weights
-        '''added part ended'''
+        # modified_v_weights = torch.nn.Parameter(mean_pool(t5_gqa.v,t5.d_model,t5.n_heads,kv_heads,t5.key_value_proj_dim))
+        # t5_gqa.v = nn.Linear(in_features = t5.d_model, out_features = kv_heads*t5.key_value_proj_dim,bias=False)
+        # t5_gqa.v.weight.data = modified_v_weights
+        # '''added part ended'''
 
         if t5.has_relative_attention_bias:
             t5_gqa.relative_attention_bias.weight.data = (
