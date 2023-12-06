@@ -183,7 +183,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
         print(f"Started evaluation for epoch {epoch}")
         for eval_batch in tqdm(eval_dataloader):
             eval_batch = {k: v.to(device) for k, v in eval_batch.items()}
-            eval_batch_pred_tensors = t5.generate(eval_batch['input_ids'])
+            eval_batch_pred_tensors = t5.generate(eval_batch['input_ids'],max_length=config.MAX_TARGET_LENGTH)
             eval_dict_list.append(compute_metrics(eval_batch_pred_tensors.cpu(),eval_batch['labels'].cpu(),tokenizer,metric))
         
         key_names = eval_dict_list[0].keys()
@@ -230,7 +230,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
     test_dict_list = []
     for test_batch in test_dataloader:
         test_batch = {k: v.to(device) for k, v in test_batch.items()}
-        test_batch_pred_tensors = t5.generate(test_batch['input_ids'])
+        test_batch_pred_tensors = t5.generate(test_batch['input_ids'],max_length=config.MAX_TARGET_LENGTH)
         test_dict_list.append(compute_metrics(test_batch_pred_tensors.cpu(),test_batch['labels'].cpu(),tokenizer,metric))
     
     key_names = test_dict_list[0].keys()
