@@ -88,9 +88,9 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
 
     data_dir = "data"
     
-    cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:1%]")
-    cnn_data_test = load_dataset("cnn_dailymail",data_dir=data_dir,split="test[:1%]")
-    cnn_data_val = load_dataset("cnn_dailymail",data_dir=data_dir,split="validation[:1%]")
+    cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:100%]")
+    cnn_data_test = load_dataset("cnn_dailymail",data_dir=data_dir,split="test[:100%]")
+    cnn_data_val = load_dataset("cnn_dailymail",data_dir=data_dir,split="validation[:100%]")
     
     tokenized_datasets_train = cnn_data_train.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
     tokenized_datasets_val = cnn_data_val.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
@@ -146,7 +146,7 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
                 eval_batch = {k: v.to(device) for k, v in eval_batch.items()}
                 eval_batch_pred_tensors = t5.module.generate(eval_batch['input_ids'])
                 eval_dict_list.append(compute_metrics(eval_batch_pred_tensors.cpu(), eval_batch['labels'].cpu(), tokenizer, metric))
-        
+            torch.save(t5.module.state_dict(), "t5_finetuned.pth")
         # eval_dict_list = []
         # print(f"Started evaluation for epoch {epoch}")
         # for eval_batch in tqdm(eval_dataloader):
