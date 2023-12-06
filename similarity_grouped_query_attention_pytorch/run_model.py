@@ -88,9 +88,9 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
 
     data_dir = "data"
     
-    cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:0.5%]")
-    cnn_data_test = load_dataset("cnn_dailymail",data_dir=data_dir,split="test[:0.5%]")
-    cnn_data_val = load_dataset("cnn_dailymail",data_dir=data_dir,split="validation[:0.5%]")
+    cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:1%]")
+    cnn_data_test = load_dataset("cnn_dailymail",data_dir=data_dir,split="test[:1%]")
+    cnn_data_val = load_dataset("cnn_dailymail",data_dir=data_dir,split="validation[:1%]")
     
     tokenized_datasets_train = cnn_data_train.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
     tokenized_datasets_val = cnn_data_val.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
@@ -132,7 +132,7 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
             outputs = t5(**batch)
             loss = outputs.loss
             loss.backward()
-            print(loss)
+            # print(loss)
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
@@ -158,6 +158,7 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
             average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
             for k in average_dict.keys():
                 val_rouge_dict[k].append(average_dict[k])
+            print(f'Epoch==.{epoch} val rogue {val_rouge_dict}')
             wandb.log({f"val_rouge_{epoch}":val_rouge_dict})
         # break
     wandb.log({"val_rouge":val_rouge_dict})
