@@ -93,11 +93,12 @@ if __name__ == '__main__':
         eval_batch = {k: v.to(device) for k, v in eval_batch.items()}
         eval_batch_pred_tensors = t5.generate(eval_batch['input_ids'],max_length=config.MAX_TARGET_LENGTH)
         eval_dict_list.append(compute_metrics(eval_batch_pred_tensors.cpu(),eval_batch['labels'].cpu(),tokenizer,metric))
-        
+        break
     key_names = eval_dict_list[0].keys()
     average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
     for k in average_dict.keys():
         val_rouge_dict[k].append(average_dict[k])
+    print({"mha_val_"+k:v[0] for k,v in val_rouge_dict.items()})
     wandb.log({"mha_val_"+k:v[0] for k,v in val_rouge_dict.items()})
 
     test_dict_list = []
@@ -105,8 +106,9 @@ if __name__ == '__main__':
         test_batch = {k: v.to(device) for k, v in test_batch.items()}
         test_batch_pred_tensors = t5.generate(test_batch['input_ids'],max_length=config.MAX_TARGET_LENGTH)
         test_dict_list.append(compute_metrics(test_batch_pred_tensors.cpu(),test_batch['labels'].cpu(),tokenizer,metric))
-    
+        break
     key_names = test_dict_list[0].keys()
     test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
-    wandb.log({"mha_test_"+k:v[0] for k,v in test_rouge_dict.items()})
+    print({"mha_test_"+k:v for k,v in val_rouge_dict.items()})
+    wandb.log({"mha_test_"+k:v for k,v in test_rouge_dict.items()})
 

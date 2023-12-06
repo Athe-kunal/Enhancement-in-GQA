@@ -176,7 +176,7 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
         
         key_names = test_dict_list[0].keys()
         test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
-        wandb.log({"simgqa_test_"+k:v[0] for k,v in test_rouge_dict.items()})
+        wandb.log({"simgqa_test_"+k:v for k,v in test_rouge_dict.items()})
         # Save only on the master process
 
         return val_rouge_dict,test_rouge_dict

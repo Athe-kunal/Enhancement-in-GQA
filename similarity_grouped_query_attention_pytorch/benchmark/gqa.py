@@ -127,14 +127,17 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
     progress_bar = tqdm(range(num_training_steps))
     val_rouge_dict = {'rouge1': [], 'rouge2': [], 'rougeL': [], 'rougeLsum': [], 'gen_len': []}
 
+    train_loss_list = []
+    val_loss_list = []
     for epoch in range(config.NUM_EPOCHS):
         t5.train()
+        epoch_train_loss = []
         for batch in train_dataloader:
             batch = {k: v.to(device) for k, v in batch.items()}
             outputs = t5(**batch)
             loss = outputs.loss
             loss.backward()
-            # print(loss)
+            epoch_train_loss.append(loss.item())
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
@@ -143,9 +146,11 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
         t5.eval()
         if rank == 0:
             eval_dict_list = []
+            epoch_eval_loss = []
             print(f"Started evaluation for epoch {epoch}")
             for eval_batch in eval_dataloader:
                 eval_batch = {k: v.to(device) for k, v in eval_batch.items()}
+                eval_outputs = t5()
                 eval_batch_pred_tensors = t5.module.generate(eval_batch['input_ids'],max_length=config.MAX_TARGET_LENGTH)
                 eval_dict_list.append(compute_metrics(eval_batch_pred_tensors.cpu(), eval_batch['labels'].cpu(), tokenizer, metric))
             artifact = wandb.Artifact('model', type='model')
@@ -176,7 +181,7 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
         
         key_names = test_dict_list[0].keys()
         test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
-        wandb.log({"gqa_test_"+k:v[0] for k,v in test_rouge_dict.items()})
+        wandb.log({"gqa_test_"+k:v for k,v in test_rouge_dict.items()})
         # Save only on the master process
 
         return val_rouge_dict,test_rouge_dict
