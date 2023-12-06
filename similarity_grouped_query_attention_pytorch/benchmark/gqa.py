@@ -163,7 +163,7 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
             for k in average_dict.keys():
                 val_rouge_dict[k].append(average_dict[k])
             print(f'Epoch==.{epoch} val rogue {val_rouge_dict}')
-            wandb.log({f"gqa_val_{epoch}_"+k:v for k,v in val_rouge_dict.items()})
+            wandb.log({f"gqa_val_{epoch}_"+k:v[0] for k,v in val_rouge_dict.items()})
             # wandb.log({f"val_rouge_{epoch}":val_rouge_dict})
         # break
     wandb.log({"gqa_val_"+k:v for k,v in val_rouge_dict.items()})
@@ -176,7 +176,7 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
         
         key_names = test_dict_list[0].keys()
         test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
-        wandb.log({"gqa_test_"+k:v for k,v in test_rouge_dict.items()})
+        wandb.log({"gqa_test_"+k:v[0] for k,v in test_rouge_dict.items()})
         # Save only on the master process
 
         return val_rouge_dict,test_rouge_dict
