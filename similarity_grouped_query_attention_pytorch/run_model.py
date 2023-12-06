@@ -173,7 +173,7 @@ def train(rank,world_size,model_name:str=config.MODEL_NAME):
         test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
         wandb.log({"test_rouge":test_rouge_dict})
 
-    return val_rouge_dict,test_rouge_dict
+        return val_rouge_dict,test_rouge_dict
 
 def main(rank, world_size):
     setup(rank, world_size)
