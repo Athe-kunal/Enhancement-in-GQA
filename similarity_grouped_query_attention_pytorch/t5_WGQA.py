@@ -67,7 +67,7 @@ class WT5GQA(nn.Module):
         dropout: float,
         has_relative_attention_bias: bool,
         relative_attention_num_buckets: int,
-        relative_attention_max_distance: int,idx:int=0):
+        relative_attention_max_distance: int):
 
         super(WT5GQA,self).__init__()
         self.is_decoder = is_decoder
@@ -83,7 +83,6 @@ class WT5GQA(nn.Module):
 
         self.inner_dim = self.n_heads * self.key_value_proj_dim
         self.kv_dim = self.kv_heads * self.key_value_proj_dim
-        self.idx = idx
         self.kv_heads = kv_heads
         self.q = nn.Linear(self.d_model, self.inner_dim, bias=False)
         self.k = nn.Linear(self.d_model, self.inner_dim, bias=False)
@@ -91,13 +90,13 @@ class WT5GQA(nn.Module):
         self.o = nn.Linear(self.inner_dim, self.d_model, bias=False)
         if IF_RANDOM:
             self.params = nn.ParameterDict({
-                f"key_{idx}": nn.Parameter(torch.randn((self.n_heads,1))),
-                f"value_{idx}": nn.Parameter(torch.randn((self.n_heads,1))),
+                f"key": nn.Parameter(torch.randn((self.n_heads,1))),
+                f"value": nn.Parameter(torch.randn((self.n_heads,1))),
                 })
         else:
             self.params = nn.ParameterDict({
-                f"key_{idx}": nn.Parameter(torch.full((self.n_heads,1),0.5)),
-                f"value_{idx}": nn.Parameter(torch.full((self.n_heads,1),0.5)),
+                f"key": nn.Parameter(torch.full((self.n_heads,1),0.5)),
+                f"value": nn.Parameter(torch.full((self.n_heads,1),0.5)),
                 })
         if self.has_relative_attention_bias:
             self.relative_attention_bias = nn.Embedding(
@@ -109,7 +108,7 @@ class WT5GQA(nn.Module):
         self._relative_position_bucket = T5Attention._relative_position_bucket
     
     @classmethod
-    def from_t5_attention(cls, t5: T5Attention, kv_heads: int,idx:int=0):
+    def from_t5_attention(cls, t5: T5Attention, kv_heads: int):
         t5_wgqa = WT5GQA(
             is_decoder=t5.is_decoder,
             d_model=t5.d_model,
@@ -119,47 +118,46 @@ class WT5GQA(nn.Module):
             dropout=t5.dropout,
             has_relative_attention_bias=t5.has_relative_attention_bias,
             relative_attention_num_buckets=t5.relative_attention_num_buckets,
-            relative_attention_max_distance=t5.relative_attention_max_distance,
-            idx=idx
+            relative_attention_max_distance=t5.relative_attention_max_distance
         )
 
         # Copy all of the weights verbatim from the original T5Attention module.
         # NOTE: In the T5 GQA implementation, all of the attention head aggregations
         # happen in the 'forward' method.  The weights themselves are not modified.
         t5_wgqa.q.weight.data = t5.q.weight.data
-        t5_wgqa_k_mod = t5.k.weight.data.T
-        t5_wgqa_v_mod = t5.v.weight.data.T
+        t5_wgqa.k.weight.data = t5.k.weight.data
+        t5_wgqa.v.weight.data = t5.v.weight.data
         t5_wgqa.o.weight.data = t5.o.weight.data
 
-        if IF_RANDOM:
-            params = nn.ParameterDict({
-                f"key_{idx}": nn.Parameter(torch.randn((t5.n_heads,1))),
-                f"value_{idx}": nn.Parameter(torch.randn((t5.n_heads,1))),
-                })
-        else:
-            params = nn.ParameterDict({
-                f"key_{idx}": nn.Parameter(torch.full((t5.n_heads,1),0.5)),
-                f"value_{idx}": nn.Parameter(torch.full((t5.n_heads,1),0.5)),
-                })
+        # if IF_RANDOM:
+        #     params = nn.ParameterDict({
+        #         f"key": nn.Parameter(torch.randn((t5.n_heads,1))),
+        #         f"value": nn.Parameter(torch.randn((t5.n_heads,1))),
+        #         })
+        # else:
+        #     params = nn.ParameterDict({
+        #         f"key": nn.Parameter(torch.full((t5.n_heads,1),0.5)),
+        #         f"value": nn.Parameter(torch.full((t5.n_heads,1),0.5)),
+        #         })
 
 
-        t5_wgqa_k_mod = t5_wgqa_k_mod.view(t5.d_model,t5.n_heads,t5.d_model//t5.n_heads)
-        t5_wgqa_k_mod = torch.multiply(t5_wgqa_k_mod,params[f"key_{idx}"])
-        t5_wgqa_v_mod = t5_wgqa_v_mod.view(t5.d_model,t5.n_heads,t5.d_model//t5.n_heads)
-        t5_wgqa_v_mod = torch.multiply(t5_wgqa_v_mod,params[f"value_{idx}"])
+        # t5_wgqa_k_mod = t5_wgqa_k_mod.view(t5.d_model,t5.n_heads,t5.d_model//t5.n_heads)
+        # t5_wgqa_k_mod = torch.multiply(t5_wgqa_k_mod,params[f"key"])
+        # t5_wgqa_v_mod = t5_wgqa_v_mod.view(t5.d_model,t5.n_heads,t5.d_model//t5.n_heads)
+        # t5_wgqa_v_mod = torch.multiply(t5_wgqa_v_mod,params[f"value"])
         
-        '''added part'''
-        # x.permute(*torch.arange(x.ndim - 1, -1, -1))
-        t5_wgqa_k_mod = torch.reshape(t5_wgqa_k_mod,(t5.d_model,-1))
-        t5_wgqa_v_mod = torch.reshape(t5_wgqa_v_mod,(t5.d_model,-1))
-        modified_k_weights =  torch.nn.Parameter(t5_wgqa_k_mod.T)
-        t5_wgqa.k = nn.Linear(in_features=t5.d_model, out_features=t5.d_model,bias=False)
-        t5_wgqa.k.weight.data = modified_k_weights
+        # '''added part'''
+        # # x.permute(*torch.arange(x.ndim - 1, -1, -1))
+        # t5_wgqa_k_mod = torch.reshape(t5_wgqa_k_mod,(t5.d_model,-1))
+        # t5_wgqa_v_mod = torch.reshape(t5_wgqa_v_mod,(t5.d_model,-1))
+        # modified_k_weights =  torch.nn.Parameter(t5_wgqa_k_mod.T)
+        # t5_wgqa.k = nn.Linear(in_features=t5.d_model, out_features=t5.d_model,bias=False)
+        # t5_wgqa.k.weight.data = modified_k_weights
 
-        # x.permute(*torch.arange(x.ndim - 1, -1, -1))
-        modified_v_weights = torch.nn.Parameter(t5_wgqa_v_mod.T)
-        t5_wgqa.v = nn.Linear(in_features = t5.d_model, out_features = t5.d_model,bias=False)
-        t5_wgqa.v.weight.data = modified_v_weights
+        # # x.permute(*torch.arange(x.ndim - 1, -1, -1))
+        # modified_v_weights = torch.nn.Parameter(t5_wgqa_v_mod.T)
+        # t5_wgqa.v = nn.Linear(in_features = t5.d_model, out_features = t5.d_model,bias=False)
+        # t5_wgqa.v.weight.data = modified_v_weights
         '''added part ended'''
 
         if t5.has_relative_attention_bias:
@@ -255,11 +253,20 @@ class WT5GQA(nn.Module):
         #k- (512,256)  --> (512,512)
         # self.k_agg = add_pool(key_states,self.d_model,self.n_heads,self.kv_heads,self.d_model//self.n_heads)
         # self.v_agg = add_pool(value_states,self.d_model,self.n_heads,self.kv_heads,self.d_model//self.n_heads)
-        k_weight_data = add_pool(self.k.weight.data,d_model=self.d_model,n_heads=self.n_heads,kv_heads=self.kv_heads,h_dim=self.d_model//self.n_heads) #(256,512)
+        k_weight_data = self.k.weight.data.T
+        k_weight_data = k_weight_data.view(self.d_model,self.n_heads,self.d_model//self.n_heads)
+        k_weight_data = torch.multiply(k_weight_data,self.params[f"key"])
+        k_weight_data = torch.reshape(k_weight_data,(self.d_model,-1)).T
+
+        k_weight_data = add_pool(k_weight_data,d_model=self.d_model,n_heads=self.n_heads,kv_heads=self.kv_heads,h_dim=self.d_model//self.n_heads) #(256,512)
         k_weight_data = k_weight_data.view(self.kv_heads,self.d_model//self.n_heads,self.d_model).repeat_interleave(self.n_heads//self.kv_heads,dim=0)
         k_weight_data = torch.reshape(k_weight_data,(-1,self.d_model))
         self.k.weight.data = k_weight_data
         # print(k_weight_data.shape)
+        v_weight_data = self.v.weight.data.T
+        v_weight_data = v_weight_data.view(self.d_model,self.n_heads,self.d_model//self.n_heads)
+        v_weight_data = torch.multiply(v_weight_data,self.params[f"value"])
+        v_weight_data = torch.reshape(v_weight_data,(self.d_model,-1)).T
         v_weight_data = add_pool(self.v.weight.data,d_model=self.d_model,n_heads=self.n_heads,kv_heads=self.kv_heads,h_dim=self.d_model//self.n_heads) #(256,512)
         v_weight_data = v_weight_data.view(self.kv_heads,self.d_model//self.n_heads,self.d_model).repeat_interleave(self.n_heads//self.kv_heads,dim=0)
         v_weight_data = torch.reshape(v_weight_data,(-1,self.d_model))
@@ -333,33 +340,30 @@ class WT5GQA(nn.Module):
         return outputs
 
 
-def main_convert_t5_to_gqa(module,kv_heads:int,inplace:bool=False):
-    idx = 0
-    def convert_t5_to_gqa(module, kv_heads: int,idx:int,weight_flag:bool=False,inplace: bool = False,curr_name:str=''):
-        """Get the list of attention modules based on the flag about encoder, decoder or cross-attention
 
-        Args:
-            module: Transformer module/unit
-            kv_heads (int): Number of key-value heads
-            similarity_flag (bool, optional): Similarity GQA flag. Defaults to False.
-            inplace (bool, optional): inplace replace the model with GQA. Defaults to False.
+def convert_t5_to_gqa(module, kv_heads: int,weight_flag:bool=False,inplace: bool = False,curr_name:str=''):
+    """Get the list of attention modules based on the flag about encoder, decoder or cross-attention
 
-        Returns:
-            _type_: _description_
-        """
-        if isinstance(module, T5Attention) and weight_flag:
-            # print(curr_name)
-            return WT5GQA.from_t5_attention(module, kv_heads=kv_heads,idx=idx)
+    Args:
+        module: Transformer module/unit
+        kv_heads (int): Number of key-value heads
+        similarity_flag (bool, optional): Similarity GQA flag. Defaults to False.
+        inplace (bool, optional): inplace replace the model with GQA. Defaults to False.
 
-        out = module if inplace else deepcopy(module)
-        for name, child in out.named_children():
-            if name in GQA_LIST:
-                curr_name = name
-                weight_flag = True
-                idx+=1
-            out._modules[name] = convert_t5_to_gqa(child, kv_heads=kv_heads,weight_flag=weight_flag, inplace=True,curr_name=curr_name,idx=idx)
-        return out
-    return convert_t5_to_gqa(module,kv_heads=kv_heads,idx=idx,inplace=inplace)
+    Returns:
+        _type_: _description_
+    """
+    if isinstance(module, T5Attention) and weight_flag:
+        # print(curr_name)
+        return WT5GQA.from_t5_attention(module, kv_heads=kv_heads)
+
+    out = module if inplace else deepcopy(module)
+    for name, child in out.named_children():
+        if name in GQA_LIST:
+            curr_name = name
+            weight_flag = True
+        out._modules[name] = convert_t5_to_gqa(child, kv_heads=kv_heads,weight_flag=weight_flag, inplace=True,curr_name=curr_name)
+    return out
     
 
 
@@ -384,7 +388,7 @@ if __name__=='__main__':
     print(f'Generated text with pretrained model: {text}')
     #convert t5 to gqa
     for kv_heads in [8]:
-        t5_wgqa = main_convert_t5_to_gqa(t5,kv_heads=kv_heads,inplace=False)
+        t5_wgqa = convert_t5_to_gqa(t5,kv_heads=kv_heads,inplace=False)
         # print(t5_wgqa)
         t5_wgqa.eval()
 

@@ -287,7 +287,7 @@ if __name__=='__main__':
     print(f'Generated text with pretrained model: {text}')
     #convert t5 to gqa
     for kv_heads in [4]:
-        for similarity_flag in [True]:
+        for similarity_flag in [False]:
             t5_gqa = convert_t5_to_gqa(t5,kv_heads=kv_heads, similarity_flag=similarity_flag, inplace=False)
 
             t5_gqa.eval()
