@@ -156,6 +156,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             progress_bar.update(1)
             steps+=1
             if steps%config.INTERVAL_STEPS==0:
+                print(f'Train loss after {steps} steps:{loss}')
                 run.log({"Train loss 2k steps":loss})
                 if rank==0:
                     # t5.eval()
@@ -199,6 +200,8 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
             print(f'Epoch: {epoch} test rogue {test_rouge_dict}')
             run.log({f"{logging_name.lower()}_test_epoch_"+k:v for k,v in test_rouge_dict.items()})
+        
+        print(f'Train and val loss after {epoch} epoch:{mean_train_loss}, val:{mean_eval_loss}')
         run.log({
             "Train Loss":mean_train_loss,
             "Val Loss":mean_eval_loss
