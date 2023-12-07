@@ -20,7 +20,7 @@ import wandb
 import matplotlib.pyplot as plt
 
 wandb.login(key=config.WANDB_API_KEY)
-run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.REVERSE_GQA_LIST},entity=config.WANDB_ENTITY)
+run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.REVERSE_GQA_LIST},entity=config.WANDB_ENTITY,name="REVERSE")
 
 def get_tf_attention_dict(module,kv_heads:int=4):
     transfer_to_gqa: List[str] = ["encoder","decoder","EncDecAttention"]
@@ -190,9 +190,9 @@ def reverse_train(model_name:str=config.MODEL_NAME):
         average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
         for k in average_dict.keys():
             val_rouge_dict[k].append(average_dict[k])
-        wandb.log({f"reverse_val_{epoch}_"+k:v[0] for k,v in val_rouge_dict.items()})
+        wandb.log({f"reverse_val_{epoch}_"+k:v for k,v in val_rouge_dict.items()})
         # break
-    wandb.log({f"reverse_val_"+k:v[0] for k,v in val_rouge_dict.items()})
+    wandb.log({f"reverse_val_"+k:v for k,v in val_rouge_dict.items()})
 
     #Plotting
     plt.style.use('ggplot')
@@ -235,7 +235,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
     
     key_names = test_dict_list[0].keys()
     test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
-    wandb.log({"reverse_test_"+k:v[0] for k,v in test_rouge_dict.items()})
+    wandb.log({"reverse_test_"+k:v for k,v in test_rouge_dict.items()})
 
     return all_similarities_dict,val_rouge_dict,test_rouge_dict
 
