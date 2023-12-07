@@ -20,7 +20,7 @@ import wandb
 import matplotlib.pyplot as plt
 
 wandb.login(key=config.WANDB_API_KEY)
-run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.REVERSE_GQA_LIST},entity=config.WANDB_ENTITY)
+run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.REVERSE_GQA_LIST},entity=config.WANDB_ENTITY,name="REVERSE")
 
 def get_tf_attention_dict(module,kv_heads:int=4):
     transfer_to_gqa: List[str] = ["encoder","decoder","EncDecAttention"]
