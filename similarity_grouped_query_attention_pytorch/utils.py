@@ -156,6 +156,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             progress_bar.update(1)
             steps+=1
             if steps%config.INTERVAL_STEPS==0:
+                run.log({"Train loss 2k steps":loss})
                 if rank==0:
                     # t5.eval()
                     torch.save(t5.module.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_steps_{steps}.pth")
@@ -183,13 +184,13 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
 
         t5.eval()
         if rank == 0:
-            _,eval_dict_list = validation_loop(t5,tokenizer,metric,eval_dataloader,steps,device)
+            mean_eval_loss,eval_dict_list = validation_loop(t5,tokenizer,metric,eval_dataloader,steps,device)
             key_names = eval_dict_list[0].keys()
             average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
             for k in average_dict.keys():
                 val_rouge_dict[k].append(average_dict[k])
             print(f'Epoch: {epoch} val rogue {val_rouge_dict}')
-            run.log({f"{logging_name.lower()}_val_epoch_{epoch}_"+k:v[0] for k,v in val_rouge_dict.items()})
+            run.log({f"{logging_name.lower()}_val_epoch_"+k:v[0] for k,v in val_rouge_dict.items()})
         # print(rank)
         if rank==0:
             print(f"Started testing for step {steps}")
@@ -197,10 +198,10 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             key_names = test_dict_list[0].keys()
             test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
             print(f'Epoch: {epoch} test rogue {test_rouge_dict}')
-            run.log({f"{logging_name.lower()}_test_epoch_{epoch}_"+k:v for k,v in test_rouge_dict.items()})
+            run.log({f"{logging_name.lower()}_test_epoch_"+k:v for k,v in test_rouge_dict.items()})
         run.log({
-            "Train Loss":train_loss_list,
-            "Val Loss":val_loss_list
+            "Train Loss":mean_train_loss,
+            "Val Loss":mean_eval_loss
         })
             
         if rank==0:
