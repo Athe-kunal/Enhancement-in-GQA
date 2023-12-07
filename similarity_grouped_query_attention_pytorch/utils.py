@@ -128,7 +128,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
     test_dataloader = DataLoader(tokenized_datasets_test, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator,sampler=test_sampler)
 
     num_training_steps = config.NUM_EPOCHS * len(train_dataloader)
-    optimizer = AdamW(t5.parameters(), lr=5e-5)
+    optimizer = AdamW(t5.parameters(), lr=config.LEARNING_RATE )
     lr_scheduler = get_scheduler(
         name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
     )
@@ -196,16 +196,16 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             test_dict_list = testing_loop(t5,tokenizer,metric,test_dataloader,device)
             key_names = test_dict_list[0].keys()
             test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
+            print(f'Epoch: {epoch} test rogue {test_rouge_dict}')
             run.log({f"{logging_name.lower()}_test_epoch_{epoch}_"+k:v for k,v in test_rouge_dict.items()})
         run.log({
             "Train Loss":train_loss_list,
             "Val Loss":val_loss_list
         })
             
-    
-    if rank==0:
-        t5.eval()
-        torch.save(t5.module.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_epoch_{epoch}.pth")
+        if rank==0:
+            t5.eval()
+            torch.save(t5.module.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_epoch_{epoch}.pth")
 
     return val_rouge_dict,test_rouge_dict
 
