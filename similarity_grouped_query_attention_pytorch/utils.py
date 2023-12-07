@@ -190,7 +190,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
                 val_rouge_dict[k].append(average_dict[k])
             print(f'Epoch: {epoch} val rogue {val_rouge_dict}')
             run.log({f"{logging_name.lower()}_val_epoch_{epoch}_"+k:v[0] for k,v in val_rouge_dict.items()})
-        print(rank)
+        # print(rank)
         if rank==0:
             print(f"Started testing for step {steps}")
             test_dict_list = testing_loop(t5,tokenizer,metric,test_dataloader,device)
