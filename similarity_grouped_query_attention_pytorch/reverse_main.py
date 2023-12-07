@@ -127,8 +127,8 @@ def reverse_train(model_name:str=config.MODEL_NAME):
     tokenized_datasets_test = cnn_data_test.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=1000)
 
     train_dataloader = DataLoader(tokenized_datasets_train, shuffle=True, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
-    eval_dataloader = DataLoader(tokenized_datasets_val, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
-    test_dataloader = DataLoader(tokenized_datasets_test, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
+    eval_dataloader = DataLoader(tokenized_datasets_val, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator)
+    test_dataloader = DataLoader(tokenized_datasets_test, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator)
 
     num_training_steps = config.NUM_EPOCHS * len(train_dataloader)
     optimizer = AdamW(t5.parameters(), lr=5e-5)
@@ -150,7 +150,7 @@ def reverse_train(model_name:str=config.MODEL_NAME):
         for attn_layer in tf_attention_dict[attn_name]:
             all_similarities_dict[attn_name].append(get_sim_score(attn_layer.q.weight.data))
 
-    for epoch in range(50):
+    for epoch in range(10):
         t5.train()
         for batch in train_dataloader:
             batch = {k: v.to(device) for k, v in batch.items()}
