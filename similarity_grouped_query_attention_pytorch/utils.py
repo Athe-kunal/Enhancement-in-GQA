@@ -104,9 +104,9 @@ def train(rank,world_size,kv_heads:int,logging_name:str,model_name:str=config.MO
 
     data_dir = "data"
     
-    cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split="train[:100%]")
-    cnn_data_test = load_dataset("cnn_dailymail",data_dir=data_dir,split="test[:100%]")
-    cnn_data_val = load_dataset("cnn_dailymail",data_dir=data_dir,split="validation[:100%]")
+    cnn_data_train = load_dataset("cnn_dailymail",data_dir=data_dir,split=f"train[:{config.PERCENT_DATA}%]")
+    cnn_data_test = load_dataset("cnn_dailymail",data_dir=data_dir,split=f"test[:{config.PERCENT_DATA}%]")
+    cnn_data_val = load_dataset("cnn_dailymail",data_dir=data_dir,split=f"validation[:{config.PERCENT_DATA}%]")
     
     tokenized_datasets_train = cnn_data_train.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=config.TOKENIZE_BATCH_SIZE)
     tokenized_datasets_val = cnn_data_val.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=config.TOKENIZE_BATCH_SIZE)
