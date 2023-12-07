@@ -23,6 +23,7 @@ from t5_WGQA import main_convert_t5_to_gqa
 import torch.nn as nn
 import torch.distributed as dist
 import os
+import shutil
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoTokenizer, T5Tokenizer
 
@@ -77,6 +78,10 @@ def testing_loop(t5,tokenizer,metric,test_dataloader,device):
     return test_dict_list
     
 def train(rank,world_size,kv_heads:int,logging_name:str,model_name:str=config.MODEL_NAME,similarity_flag:bool=False,weight_flag:bool=False):
+    dir = logging_name.upper()
+    if os.path.exists(dir):
+        shutil.rmtree(dir)
+    os.makedirs(dir)
     device = torch.device("cuda", rank)
     t5: T5ForConditionalGeneration = T5ForConditionalGeneration.from_pretrained(
         model_name
@@ -153,23 +158,25 @@ def train(rank,world_size,kv_heads:int,logging_name:str,model_name:str=config.MO
             if steps%config.INTERVAL_STEPS==0:
                 
                 t5.eval()
-                if rank == 0:
-                    mean_eval_loss,eval_dict_list = validation_loop(t5,tokenizer,metric,eval_dataloader,steps,device)
-                    val_loss_list.append(mean_eval_loss)
-                    key_names = eval_dict_list[0].keys()
-                    average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
-                    for k in average_dict.keys():
-                        val_rouge_dict[k].append(average_dict[k])
-                    print(f'Steps: {steps} val rogue {val_rouge_dict}')
-                    wandb.log({f"{logging_name.lower()}_val_steps_{steps}_"+k:v[0] for k,v in val_rouge_dict.items()})
+                torch.save(f"{dir}/{logging_name.lower()}_t5_finetuned_steps_{steps}.pth")
+                # if rank == 0:
+                #     mean_eval_loss,eval_dict_list = validation_loop(t5,tokenizer,metric,eval_dataloader,steps,device)
+                #     val_loss_list.append(mean_eval_loss)
+                #     key_names = eval_dict_list[0].keys()
+                #     average_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
+                #     for k in average_dict.keys():
+                #         val_rouge_dict[k].append(average_dict[k])
+                #     print(f'Steps: {steps} val rogue {val_rouge_dict}')
+                #     wandb.log({f"{logging_name.lower()}_val_steps_{steps}_"+k:v[0] for k,v in val_rouge_dict.items()})
             
-                if rank==0:
-                    print(f"Started testing for step {steps}")
-                    test_dict_list = testing_loop(t5,tokenizer,metric,test_dataloader,steps,device)
-                    key_names = test_dict_list[0].keys()
-                    test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
-                    wandb.log({f"{logging_name.lower()}_test_steps_{steps}_"+k:v for k,v in test_rouge_dict.items()})
-                t5.train()
+                # if rank==0:
+                #     print(f"Started testing for step {steps}")
+                #     test_dict_list = testing_loop(t5,tokenizer,metric,test_dataloader,steps,device)
+                #     key_names = test_dict_list[0].keys()
+                #     test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
+                #     wandb.log({f"{logging_name.lower()}_test_steps_{steps}_"+k:v for k,v in test_rouge_dict.items()})
+                
+                # t5.train()
         mean_train_loss = sum(epoch_train_loss)/len(epoch_train_loss)
         train_loss_list.append(mean_train_loss)
 
