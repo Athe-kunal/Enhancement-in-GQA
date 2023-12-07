@@ -26,7 +26,7 @@ def main(rank, world_size):
 
 if __name__ == '__main__':
     wandb.login(key=config.WANDB_API_KEY)
-    run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.GQA_LIST},entity=config.WANDB_ENTITY,name="WGQA")
+    run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.GQA_LIST},entity=config.WANDB_ENTITY,group="WGQA")
 
     world_size = torch.cuda.device_count()
     torch.multiprocessing.spawn(main, args=(world_size,), nprocs=world_size, join=True)

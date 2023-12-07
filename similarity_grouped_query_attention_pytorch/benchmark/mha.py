@@ -28,7 +28,7 @@ from reverse_main import compute_metrics, get_avg
 
 if __name__ == '__main__':
     wandb.login(key=config.WANDB_API_KEY)
-    run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.GQA_LIST},entity=config.WANDB_ENTITY,name="MHA")
+    run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.GQA_LIST},entity=config.WANDB_ENTITY,group="MHA")
 
 
     t5: T5ForConditionalGeneration = T5ForConditionalGeneration.from_pretrained("t5-small")
