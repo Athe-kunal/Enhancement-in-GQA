@@ -17,17 +17,16 @@ def setup(rank, world_size):
 def cleanup():
     dist.destroy_process_group()
 
-def main(rank, world_size):
-    setup(rank, world_size)
-    val_rouge_dict, test_rouge_dict = train(rank,world_size,kv_heads=4,logging_name="simgqa",model_name=config.MODEL_NAME,similarity_flag=True,weight_flag=False)
-    print(f'validation rogue dict:{val_rouge_dict}')
-    print(f'Test rogue dict:{test_rouge_dict}')
-    cleanup()
 
 if __name__ == '__main__':
     wandb.login(key=config.WANDB_API_KEY)
     run = wandb.init(project=config.WANDB_PROJECT,config={"model":config.MODEL_NAME,"gqa_list":config.GQA_LIST},entity=config.WANDB_ENTITY,group="SimGQA")
-
+    def main(rank, world_size):
+        setup(rank, world_size)
+        val_rouge_dict, test_rouge_dict = train(rank,world_size,kv_heads=4,logging_name="simgqa",run=run,model_name=config.MODEL_NAME,similarity_flag=True,weight_flag=False)
+        print(f'validation rogue dict:{val_rouge_dict}')
+        print(f'Test rogue dict:{test_rouge_dict}')
+        cleanup()
     world_size = torch.cuda.device_count()
     torch.multiprocessing.spawn(main, args=(world_size,), nprocs=world_size, join=True)
     

@@ -77,7 +77,7 @@ def testing_loop(t5,tokenizer,metric,test_dataloader,device):
     
     return test_dict_list
     
-def train(rank,world_size,kv_heads:int,logging_name:str,model_name:str=config.MODEL_NAME,similarity_flag:bool=False,weight_flag:bool=False):
+def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=config.MODEL_NAME,similarity_flag:bool=False,weight_flag:bool=False):
     dir = logging_name.upper()
     if os.path.exists(dir):
         shutil.rmtree(dir)
@@ -189,15 +189,15 @@ def train(rank,world_size,kv_heads:int,logging_name:str,model_name:str=config.MO
             for k in average_dict.keys():
                 val_rouge_dict[k].append(average_dict[k])
             print(f'Epoch: {epoch} val rogue {val_rouge_dict}')
-            wandb.log({f"{logging_name.lower()}_val_epoch_{epoch}_"+k:v[0] for k,v in val_rouge_dict.items()})
+            run.log({f"{logging_name.lower()}_val_epoch_{epoch}_"+k:v[0] for k,v in val_rouge_dict.items()})
     
         if rank==0:
             print(f"Started testing for step {steps}")
             test_dict_list = testing_loop(t5,tokenizer,metric,test_dataloader,steps,device)
             key_names = test_dict_list[0].keys()
             test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
-            wandb.log({f"{logging_name.lower()}_test_epoch_{epoch}_"+k:v for k,v in test_rouge_dict.items()})
-        wandb.log({
+            run.log({f"{logging_name.lower()}_test_epoch_{epoch}_"+k:v for k,v in test_rouge_dict.items()})
+        run.log({
             "Train Loss":train_loss_list,
             "Val Loss":val_loss_list
         })
