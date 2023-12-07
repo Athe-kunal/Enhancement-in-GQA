@@ -169,7 +169,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,model_name:str=config.MO
                     key_names = test_dict_list[0].keys()
                     test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
                     wandb.log({f"{logging_name.lower()}_test_steps_{steps}_"+k:v for k,v in test_rouge_dict.items()})
-
+                t5.train()
         mean_train_loss = sum(epoch_train_loss)/len(epoch_train_loss)
         train_loss_list.append(mean_train_loss)
 
