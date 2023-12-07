@@ -156,10 +156,10 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             progress_bar.update(1)
             steps+=1
             if steps%config.INTERVAL_STEPS==0:
-                
-                t5.eval()
-                torch.save(f"{dir}/{logging_name.lower()}_t5_finetuned_steps_{steps}.pth")
-                t5.train()
+                if rank==0:
+                    t5.eval()
+                    torch.save(f"{dir}/{logging_name.lower()}_t5_finetuned_steps_{steps}.pth")
+                    t5.train()
                 # if rank == 0:
                 #     mean_eval_loss,eval_dict_list = validation_loop(t5,tokenizer,metric,eval_dataloader,steps,device)
                 #     val_loss_list.append(mean_eval_loss)
@@ -201,6 +201,10 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             "Train Loss":train_loss_list,
             "Val Loss":val_loss_list
         })
+    
+    if rank==0:
+        t5.eval()
+        torch.save(f"{dir}/{logging_name.lower()}_t5_finetuned_steps_{steps}.pth")
     return val_rouge_dict,test_rouge_dict
 
 
