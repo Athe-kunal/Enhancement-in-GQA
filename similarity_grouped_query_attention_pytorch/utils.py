@@ -159,6 +159,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,model_name:str=config.MO
                 
                 t5.eval()
                 torch.save(f"{dir}/{logging_name.lower()}_t5_finetuned_steps_{steps}.pth")
+                t5.train()
                 # if rank == 0:
                 #     mean_eval_loss,eval_dict_list = validation_loop(t5,tokenizer,metric,eval_dataloader,steps,device)
                 #     val_loss_list.append(mean_eval_loss)
