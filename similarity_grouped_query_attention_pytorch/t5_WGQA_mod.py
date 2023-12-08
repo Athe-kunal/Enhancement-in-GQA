@@ -130,11 +130,11 @@ class WeightT5SelfAttention(T5Attention):
             if key_value_states is None:
                 # self-attn
                 # (batch_size, n_heads, seq_length, dim_per_head)
-                hidden_states = shape(proj_layer(hidden_states))
+                hidden_states = shape(torch.einsum('bnd,di->bni',hidden_states,proj_layer.T)) #shape(proj_layer(hidden_states))
             elif past_key_value is None:
                 # cross-attn
                 # (batch_size, n_heads, seq_length, dim_per_head)
-                hidden_states = shape(proj_layer(key_value_states))
+                hidden_states = shape(torch.einsum('bnd,di->bni',key_value_states,proj_layer.T)) #shape(proj_layer(key_value_states))
 
             if past_key_value is not None:
                 if key_value_states is None:
@@ -146,7 +146,7 @@ class WeightT5SelfAttention(T5Attention):
                     # the provided `key_value_states` to support prefix tuning
                     # cross-attn
                     # (batch_size, n_heads, seq_length, dim_per_head)
-                    hidden_states = shape(proj_layer(key_value_states))
+                    hidden_states = shape(torch.einsum('bnd,di->bni',key_value_states,proj_layer.T)) #shape(proj_layer(key_value_states))
                 else:
                     # cross-attn
                     hidden_states = past_key_value
@@ -154,39 +154,23 @@ class WeightT5SelfAttention(T5Attention):
 
         # get query states
         query_states = shape(self.q(hidden_states))  # (batch_size, n_heads, seq_length, dim_per_head)
-        # print(self.params["key"].data.shape)
-        k_weight_data = torch.transpose(self.k.weight.data,0,1)
-        #(512,8,64)
-        k_weight_data = k_weight_data.view(self.d_model,self.n_heads,self.d_model//self.n_heads)
-        # print(k_weight_data)
-        k_weight_data = torch.multiply(k_weight_data,self.wk1)
-        # print(k_weight_data)
-        # return 
-        k_weight_data = torch.transpose(torch.reshape(k_weight_data,(self.d_model,-1)),0,1)
+        
+        mod_k = torch.multiply(self.k.weight.view(self.n_heads,self.key_value_proj_dim,self.d_model),self.wk1.view(self.n_heads,1,1))
+        mod_k = mod_k.view(self.kv_heads,self.n_heads//self.kv_heads,self.key_value_proj_dim,self.d_model).sum(axis=1)
 
-        k_weight_data = add_pool(k_weight_data,d_model=self.d_model,n_heads=self.n_heads,kv_heads=self.kv_heads,h_dim=self.d_model//self.n_heads) #(256,512)
-        k_weight_data = k_weight_data.view(self.kv_heads,self.d_model//self.n_heads,self.d_model).repeat_interleave(self.n_heads//self.kv_heads,dim=0)
-        k_weight_data = torch.reshape(k_weight_data,(-1,self.d_model))
-        # print(k_weight_data.shape)
-        # self.k.weight.data = k_weight_data
-        k1 = nn.Linear(in_features=512,out_features=512,bias=False) 
-        k1.weight.data = k_weight_data
-        # print(k_weight_data.shape)
-        v_weight_data = torch.transpose(self.v.weight.data,0,1)
-        v_weight_data = v_weight_data.view(self.d_model,self.n_heads,self.d_model//self.n_heads)
-        v_weight_data = torch.multiply(v_weight_data,self.wv1)
-        v_weight_data = torch.transpose(torch.reshape(v_weight_data,(self.d_model,-1)),0,1)
-        v_weight_data = add_pool(self.v.weight.data,d_model=self.d_model,n_heads=self.n_heads,kv_heads=self.kv_heads,h_dim=self.d_model//self.n_heads) #(256,512)
-        v_weight_data = v_weight_data.view(self.kv_heads,self.d_model//self.n_heads,self.d_model).repeat_interleave(self.n_heads//self.kv_heads,dim=0)
-        v_weight_data = torch.reshape(v_weight_data,(self.d_model,-1))
-        v1 = nn.Linear(in_features=512,out_features=512,bias=False)
-        v1.weight.data = v_weight_data
+        mod_v = torch.multiply(self.v.weight.view(self.n_heads,self.key_value_proj_dim,self.d_model),self.wv1.view(self.n_heads,1,1))
+        mod_v = mod_v.view(self.kv_heads,self.n_heads//self.kv_heads,self.key_value_proj_dim,self.d_model).sum(axis=1)
+
+        mod_k = mod_k.repeat_interleave(self.n_heads//self.kv_heads,dim=0).view(self.d_model,self.d_model)
+        mod_v = mod_v.repeat_interleave(self.n_heads//self.kv_heads,dim=0).view(self.d_model,self.d_model)
+
+        
         # get key/value states
         key_states = project(
-            hidden_states, k1, key_value_states, past_key_value[0] if past_key_value is not None else None
+            hidden_states, mod_k, key_value_states, past_key_value[0] if past_key_value is not None else None
         )
         value_states = project(
-            hidden_states, v1, key_value_states, past_key_value[1] if past_key_value is not None else None
+            hidden_states, mod_v, key_value_states, past_key_value[1] if past_key_value is not None else None
         )
 
         '''Note added this part'''
