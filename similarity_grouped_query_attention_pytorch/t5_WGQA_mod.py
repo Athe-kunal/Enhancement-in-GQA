@@ -72,13 +72,15 @@ class WeightT5SelfAttention(T5Attention):
         self.gradient_checkpointing = t5_decoder_attention_block.gradient_checkpointing
         self.if_random = if_random
         # if if_random:
-        #     self.params = nn.ParameterDict({
-        #         f"key": nn.Parameter(torch.randn((self.n_heads,1))),
-        #         f"value": nn.Parameter(torch.randn((self.n_heads,1))),
+        # self.params = nn.ParameterDict({
+        #     f"key": nn.Parameter(torch.full((self.n_heads,1))),
+        #     f"value": nn.Parameter(torch.full((self.n_heads,1))),
         #         })
         # else:
-        self.wk1 = nn.Parameter(torch.full((self.n_heads,1),0.5))
-        self.wv1 = nn.Parameter(torch.full((self.n_heads,1),0.5))
+        self.params = nn.ParameterDict({
+            "wk": nn.Parameter(torch.full((self.n_heads,1),0.5)),
+            "wv": nn.Parameter(torch.full((self.n_heads,1),0.5))
+        })
 
     def forward(
         self,
@@ -155,11 +157,11 @@ class WeightT5SelfAttention(T5Attention):
         # get query states
         query_states = shape(self.q(hidden_states))  # (batch_size, n_heads, seq_length, dim_per_head)
         # print(self.params["key"].data.shape)
-        k_weight_data = torch.transpose(self.k.weight.data,0,1)
+        k_weight_data = torch.transpose(self.k.weight,0,1)
         #(512,8,64)
         k_weight_data = k_weight_data.view(self.d_model,self.n_heads,self.d_model//self.n_heads)
         # print(k_weight_data)
-        k_weight_data = torch.multiply(k_weight_data,self.wk1)
+        k_weight_data = torch.multiply(k_weight_data,self.params["wk"])
         # print(k_weight_data)
         # return 
         k_weight_data = torch.transpose(torch.reshape(k_weight_data,(self.d_model,-1)),0,1)
@@ -172,9 +174,9 @@ class WeightT5SelfAttention(T5Attention):
         k1 = nn.Linear(in_features=512,out_features=512,bias=False) 
         k1.weight.data = k_weight_data
         # print(k_weight_data.shape)
-        v_weight_data = torch.transpose(self.v.weight.data,0,1)
+        v_weight_data = torch.transpose(self.v.weight,0,1)
         v_weight_data = v_weight_data.view(self.d_model,self.n_heads,self.d_model//self.n_heads)
-        v_weight_data = torch.multiply(v_weight_data,self.wv1)
+        v_weight_data = torch.multiply(v_weight_data,self.params["wv"])
         v_weight_data = torch.transpose(torch.reshape(v_weight_data,(self.d_model,-1)),0,1)
         v_weight_data = add_pool(self.v.weight.data,d_model=self.d_model,n_heads=self.n_heads,kv_heads=self.kv_heads,h_dim=self.d_model//self.n_heads) #(256,512)
         v_weight_data = v_weight_data.view(self.kv_heads,self.d_model//self.n_heads,self.d_model).repeat_interleave(self.n_heads//self.kv_heads,dim=0)
@@ -286,7 +288,7 @@ if __name__=='__main__':
     for kv_heads in [4]:
         for weight_flag in [True]:
             t5_gqa = convert_t5_to_wgqa(t5,kv_heads=kv_heads, weight_flag=weight_flag, inplace=False)
-            # print(t5_gqa.parameters())
+            print(t5_gqa)
             t5_gqa.eval()
 
             outputs = t5_gqa.generate(input_ids, max_new_tokens=128)
