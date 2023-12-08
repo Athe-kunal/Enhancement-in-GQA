@@ -341,7 +341,7 @@ class WT5GQA(nn.Module):
 
 
 
-def convert_t5_to_gqa(module, kv_heads: int,weight_flag:bool=False,inplace: bool = False,curr_name:str=''):
+def convert_t5_to_wgqa(module, kv_heads: int,weight_flag:bool=False,inplace: bool = False,curr_name:str=''):
     """Get the list of attention modules based on the flag about encoder, decoder or cross-attention
 
     Args:
@@ -362,7 +362,7 @@ def convert_t5_to_gqa(module, kv_heads: int,weight_flag:bool=False,inplace: bool
         if name in GQA_LIST:
             curr_name = name
             weight_flag = True
-        out._modules[name] = convert_t5_to_gqa(child, kv_heads=kv_heads,weight_flag=weight_flag, inplace=True,curr_name=curr_name)
+        out._modules[name] = convert_t5_to_wgqa(child, kv_heads=kv_heads,weight_flag=weight_flag, inplace=True,curr_name=curr_name)
     return out
     
 
