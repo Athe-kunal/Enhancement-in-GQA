@@ -19,7 +19,8 @@ from tqdm.auto import tqdm
 import wandb
 import matplotlib.pyplot as plt
 from t5_SGQA import convert_t5_to_gqa
-from t5_WGQA import convert_t5_to_wgqa
+# from t5_WGQA import convert_t5_to_wgqa
+from t5_WGQA_mod import convert_t5_to_wgqa
 import torch.nn as nn
 import torch.distributed as dist
 import os
@@ -87,7 +88,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
         model_name
     )
     if weight_flag:
-        t5 = convert_t5_to_wgqa(t5,kv_heads=4)
+        t5 = convert_t5_to_wgqa(t5,kv_heads=4,weight_flag=True)
     else:
         t5 = convert_t5_to_gqa(t5,kv_heads=kv_heads,similarity_flag=similarity_flag)
     t5.to(rank)
