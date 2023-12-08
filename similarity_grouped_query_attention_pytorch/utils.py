@@ -20,7 +20,7 @@ import wandb
 import matplotlib.pyplot as plt
 from t5_SGQA import convert_t5_to_gqa
 # from t5_WGQA import convert_t5_to_wgqa
-from t5_WGQA_mod import convert_t5_to_wgqa
+from t5_WGQA_final import convert_t5_to_wgqa
 import torch.nn as nn
 import torch.distributed as dist
 import os
