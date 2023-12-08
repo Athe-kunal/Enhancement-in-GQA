@@ -92,7 +92,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
     else:
         t5 = convert_t5_to_gqa(t5,kv_heads=kv_heads,similarity_flag=similarity_flag)
     t5.to(rank)
-    t5 = torch.nn.parallel.DistributedDataParallel(t5, device_ids=[rank],find_unused_parameters=True)
+    t5 = torch.nn.parallel.DistributedDataParallel(t5, device_ids=[rank])
 
     tokenizer =  AutoTokenizer.from_pretrained(model_name,legacy=False)
     data_collator = DataCollatorForSeq2Seq(tokenizer, model=t5)
