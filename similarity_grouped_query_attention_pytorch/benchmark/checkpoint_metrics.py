@@ -139,6 +139,23 @@ def checkpoint_results(run,models_info):
     val_results = {}
     test_results = {}
     #iterate through each model
+    checkpoints = ['_t5_finetuned_steps_2000.pth',
+                   '_t5_finetuned_steps_4000.pth',
+                    '_t5_finetuned_steps_6000.pth',
+                    '_t5_finetuned_steps_8000.pth'
+                    '_t5_finetuned_epoch_0.pth',
+                    '_t5_finetuned_steps_10000.pth',
+                    '_t5_finetuned_steps_12000.pth',
+                    '_t5_finetuned_steps_14000.pth',
+                    '_t5_finetuned_steps_16000.pth',
+                    '_t5_finetuned_epoch_1.pth',
+                    '_t5_finetuned_steps_18000.pth',
+                    '_t5_finetuned_steps_20000.pth',
+                    '_t5_finetuned_steps_22000.pth',
+                    '_t5_finetuned_steps_24000.pth',
+                    '_t5_finetuned_steps_26000.pth',
+                    '_t5_finetuned_epoch_2.pth',]
+
     for model_name in [models_info]:
         model_val_results = {}
         model_test_results = {}
@@ -151,14 +168,15 @@ def checkpoint_results(run,models_info):
             model_val_results[model_name] = {}
             model_test_results[model_name] = {}
 
-            for file_name in os.listdir(curr_folder): #iterate through each check point
+            for chk_point in checkpoints: #iterate through each check point
+                file_name = model_name.lower()+chk_point
+                
                 file_path = os.path.join(curr_folder,file_name)
                 t5_finetuned = load_model(file_path,model_name)
                 
                 t5_finetuned.to(device)
                 
-                m_name,_,_,step_type,step_size = file_name.split('.')[0].split('_') #['gqa', 't5', 'finetuned', 'steps', '100000']
-                assert m_name.upper() == model_name
+                _,_,_,step_type,step_size = chk_point.split('.')[0].split('_') #['_', 't5', 'finetuned', 'steps', '100000']
 
                 t5_finetuned.eval()
                 print(f"Started validation for {file_name}")
