@@ -76,11 +76,9 @@ def compute_metrics(predictions,labels,tokenizer,metric):
     
     return {k: round(v, 4) for k, v in result.items()}
 
-
-def validation_loop(t5,tokenizer,metric,eval_dataloader,step,device):
+def validation_loop(t5,tokenizer,metric,eval_dataloader,device):
     epoch_eval_loss = []
     eval_dict_list = []
-    print(f"Started evaluation for step {step}")
     for eval_batch in eval_dataloader:
         eval_batch = {k: v.to(device) for k, v in eval_batch.items()}
         eval_outputs = t5(**eval_batch)
