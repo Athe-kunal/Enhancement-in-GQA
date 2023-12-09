@@ -78,7 +78,7 @@ def testing_loop(t5,tokenizer,metric,test_dataloader,device):
     
     return test_dict_list
     
-def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=config.MODEL_NAME,similarity_flag:bool=False,weight_flag:bool=False):
+def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=config.MODEL_NAME,similarity_flag:bool=False,weight_flag:bool=False,if_random:bool=False):
     dir = logging_name.upper()
     if os.path.exists(dir):
         shutil.rmtree(dir)
@@ -88,7 +88,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
         model_name
     )
     if weight_flag:
-        t5 = convert_t5_to_wgqa(t5,kv_heads=4,weight_flag=True)
+        t5 = convert_t5_to_wgqa(t5,kv_heads=4,weight_flag=True,if_random=if_random)
     else:
         t5 = convert_t5_to_gqa(t5,kv_heads=kv_heads,similarity_flag=similarity_flag)
     t5.to(rank)

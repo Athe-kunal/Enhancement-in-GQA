@@ -71,15 +71,16 @@ class WeightT5SelfAttention(T5Attention):
         self.pruned_heads = t5_decoder_attention_block.pruned_heads
         self.gradient_checkpointing = t5_decoder_attention_block.gradient_checkpointing
         self.if_random = if_random
-        # if if_random:
-        #     self.params = nn.ParameterDict({
+        if if_random:
+            self.wk1 = nn.Parameter(torch.randn((self.n_heads,1)))
+            self.wv1 = nn.Parameter(torch.randn((self.n_heads,1)))
+        else:
+            self.wk1 = nn.Parameter(torch.full((self.n_heads,1),0.5))
+            self.wv1 = nn.Parameter(torch.full((self.n_heads,1),0.5))
+            #     self.params = nn.ParameterDict({
         #         f"key": nn.Parameter(torch.randn((self.n_heads,1))),
         #         f"value": nn.Parameter(torch.randn((self.n_heads,1))),
         #         })
-        # else:
-        self.wk1 = nn.Parameter(torch.full((self.n_heads,1),0.5))
-        self.wv1 = nn.Parameter(torch.full((self.n_heads,1),0.5))
-
     def forward(
         self,
         hidden_states,
