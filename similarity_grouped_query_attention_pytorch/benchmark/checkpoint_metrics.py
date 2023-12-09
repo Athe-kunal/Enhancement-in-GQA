@@ -137,6 +137,8 @@ def checkpoint_results(run):
     test_results = {}
     #iterate through each model
     for model_name in models_info:
+        model_val_results = {}
+        model_test_results = {}
         if model_name in os.listdir(os.getcwd()):
             curr_folder = os.path.join(os.getcwd(),model_name) #get current folder
 
@@ -165,7 +167,7 @@ def checkpoint_results(run):
                 print(f'Model name:{model_name} file_name: {file_name} val rogue {val_rouge_dict}')
                 
                 for metric_name, metric_value in val_rouge_dict.items():
-                    run.log({"val_" + metric_name: metric_value, "model": model_name, "step": int(step_size)})
+                    run.log({"val_" + model_name + '_'+metric_name: metric_value})
 
                 print(f"Started testing for {file_name}")
                 test_dict_list = testing_loop(t5_finetuned,tokenizer,metric,test_dataloader,device)
@@ -175,10 +177,21 @@ def checkpoint_results(run):
                 print(f'Model name: {model_name} file_name:{file_name} test rogue {test_rouge_dict}')
                 
                 for metric_name, metric_value in test_rouge_dict.items():
-                    run.log({"test_" + metric_name: metric_value, "model": model_name, "step": int(step_size)})
+                    run.log({"test_"+model_name + '_'+metric_name: metric_value})
                 
                 val_results[model_name][step_size] = val_rouge_dict
                 test_results[model_name][step_size] = test_rouge_dict
+
+                model_val_results[model_name][step_size] = val_rouge_dict
+                model_test_results[model_name][step_size] = test_rouge_dict
+
+            # Save results
+            with open("Results/"+model_name+"evaluation_results.json", "w") as f:
+                json.dump(model_val_results, f)
+            
+            # Save results
+            with open("Results/"+model_name+"test_results.json", "w") as f:
+                json.dump(model_test_results, f)
 
             # Save results
             with open("evaluation_results.json", "w") as f:
