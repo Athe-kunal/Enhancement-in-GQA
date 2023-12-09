@@ -84,11 +84,11 @@ def repeat_kv_heads(t5_gqa,d_model,kv_heads,n_heads):
         # print(layer.layer[0].SelfAttention.q)
         curr_self_attention_layer = layer.layer[0].SelfAttention
         k_weight_data = curr_self_attention_layer.k.weight.data
-        k_weight_data = k_weight_data.view(d_model//n_heads,kv_heads,d_model)
+        k_weight_data = k_weight_data.view(kv_heads,d_model//n_heads,d_model)
         k_weight_data = torch.repeat_interleave(k_weight_data,2,dim=1).view(-1,d_model)
         
         v_weight_data = curr_self_attention_layer.v.weight.data
-        v_weight_data = v_weight_data.view(d_model//n_heads,kv_heads,d_model)
+        v_weight_data = v_weight_data.view(kv_heads,d_model//n_heads,d_model)
         v_weight_data = torch.repeat_interleave(v_weight_data,2,dim=1).view(-1,d_model)
         
         curr_self_attention_layer.k = nn.Linear(in_features=512,out_features=512,bias=False)
@@ -99,10 +99,11 @@ def repeat_kv_heads(t5_gqa,d_model,kv_heads,n_heads):
 
         curr_cross_attention_layer = layer.layer[1].EncDecAttention
         k_weight_data = curr_cross_attention_layer.k.weight.data
-        k_weight_data = k_weight_data.view(d_model//n_heads,kv_heads,d_model)
+        k_weight_data = k_weight_data.view(kv_heads,d_model//n_heads,d_model)
         k_weight_data = torch.repeat_interleave(k_weight_data,2,dim=1).view(-1,d_model)
         
         v_weight_data = curr_cross_attention_layer.v.weight.data
+        v_weight_data = v_weight_data.view(kv_heads,d_model//n_heads,d_model)
         v_weight_data = torch.repeat_interleave(v_weight_data,2,dim=1).view(-1,d_model)
         
         curr_cross_attention_layer.k = nn.Linear(in_features=512,out_features=512,bias=False)
@@ -196,7 +197,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             steps+=1
             if steps%time_interval==0:
                 torch.save(t5.module.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_step_{epoch}_before.pth")
-                t5 = repeat_kv_heads(t5,d_model=512,kv_heads=kv_heads,n_heads=8)
+                t5 = repeat_kv_heads(t5.module,d_model=512,kv_heads=kv_heads,n_heads=8)
                 t5 = convert_t5_to_gqa(t5,kv_heads=kv_heads,similarity_flag=similarity_flag,inplace=True)
                 torch.save(t5.module.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_step_{epoch}_after.pth")
 
