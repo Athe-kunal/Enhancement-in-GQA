@@ -45,7 +45,8 @@ def load_model(checkpoint_path,model_name):
         t5_finetuned = convert_t5_to_gqa(t5,kv_heads=1,similarity_flag=False)
     else:
         print(f'{model_name} not found!')
-
+    
+    del t5
     # Load state dict
     t5_finetuned.load_state_dict(torch.load(checkpoint_path))
     
@@ -99,13 +100,15 @@ def testing_loop(t5,tokenizer,metric,test_dataloader,device):
     
     return test_dict_list
 
-def checkpoint_results(run):
+def checkpoint_results(run,models_info):
     t5: T5ForConditionalGeneration = T5ForConditionalGeneration.from_pretrained("t5-small")
     tokenizer =  AutoTokenizer.from_pretrained(chk_config.MODEL_NAME,legacy=False)
     data_collator = DataCollatorForSeq2Seq(tokenizer, model=t5)
     
     device = torch.device("cuda")
     
+    del t5
+
     def preprocess_function(examples,max_input_length:int=chk_config.MAX_INPUT_LENGTH,max_target_length:int=chk_config.MAX_TARGET_LENGTH):
         prefix = "summarize: "
         inputs = [prefix + doc for doc in examples["article"]]
@@ -131,12 +134,11 @@ def checkpoint_results(run):
     metric = load("rouge")
 
 
-    models_info =['GQA','MQA','SIMGQA','WGQA','RANDWGQA']
-
+    # models_info =['GQA','MQA','SIMGQA','WGQA','RANDWGQA']
     val_results = {}
     test_results = {}
     #iterate through each model
-    for model_name in models_info:
+    for model_name in [models_info]:
         model_val_results = {}
         model_test_results = {}
         if model_name in os.listdir(os.getcwd()):
@@ -197,16 +199,22 @@ def checkpoint_results(run):
                 json.dump(model_test_results, f)
 
             # Save results
-            with open("evaluation_results.json", "w") as f:
-                json.dump(val_results, f)
+            # with open("evaluation_results.json", "w") as f:
+            #     json.dump(val_results, f)
             
-            # Save results
-            with open("test_results.json", "w") as f:
-                json.dump(test_results, f)
+            # # Save results
+            # with open("test_results.json", "w") as f:
+            #     json.dump(test_results, f)
     
     return
 
 if __name__ == '__main__':
+
+    if len(sys.argv) != 2:
+        raise Exception("Usage: model.py model_name")
+        
+    (_, model_name) = sys.argv
+    print(model_name)
     wandb.login(key=chk_config.WANDB_API_KEY)
     run = wandb.init(project=chk_config.WANDB_PROJECT,config={"model":"Val and Test Results"},entity=chk_config .WANDB_ENTITY,group="Val and Test Results")
-    checkpoint_results(run)
+    checkpoint_results(run,model_name)
