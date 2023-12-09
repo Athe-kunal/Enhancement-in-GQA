@@ -9,7 +9,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gpus v100:1
 #SBATCH --mail-type=FAIL,BEGIN,END
-#SBATCH --job-name=Random WGQA
+#SBATCH --job-name=Random_WGQA
 #SBATCH --output=rand_wgqa_out.txt
 #SBATCH --error=rand_wgqa_err.txt
 #SBATCH -A students
