@@ -145,6 +145,9 @@ def checkpoint_results(run):
             val_results[model_name]={}
             test_results[model_name] = {}
 
+            model_val_results[model_name] = {}
+            model_test_results[model_name] = {}
+            
             for file_name in os.listdir(curr_folder): #iterate through each check point
                 file_path = os.path.join(curr_folder,file_name)
                 t5_finetuned = load_model(file_path,model_name)
