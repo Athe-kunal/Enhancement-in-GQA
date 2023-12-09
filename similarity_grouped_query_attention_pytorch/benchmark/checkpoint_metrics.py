@@ -147,7 +147,7 @@ def checkpoint_results(run):
 
             model_val_results[model_name] = {}
             model_test_results[model_name] = {}
-            
+
             for file_name in os.listdir(curr_folder): #iterate through each check point
                 file_path = os.path.join(curr_folder,file_name)
                 t5_finetuned = load_model(file_path,model_name)
@@ -189,11 +189,11 @@ def checkpoint_results(run):
                 model_test_results[model_name][step_size] = test_rouge_dict
 
             # Save results
-            with open("Results/"+model_name+"evaluation_results.json", "w") as f:
+            with open("Results/"+model_name+"_evaluation_results.json", "w") as f:
                 json.dump(model_val_results, f)
             
             # Save results
-            with open("Results/"+model_name+"test_results.json", "w") as f:
+            with open("Results/"+model_name+"_test_results.json", "w") as f:
                 json.dump(model_test_results, f)
 
             # Save results
