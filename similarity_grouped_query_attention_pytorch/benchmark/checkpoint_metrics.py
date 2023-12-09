@@ -142,7 +142,7 @@ def checkpoint_results(run,models_info):
     checkpoints = ['_t5_finetuned_steps_2000.pth',
                    '_t5_finetuned_steps_4000.pth',
                     '_t5_finetuned_steps_6000.pth',
-                    '_t5_finetuned_steps_8000.pth'
+                    '_t5_finetuned_steps_8000.pth',
                     '_t5_finetuned_epoch_0.pth',
                     '_t5_finetuned_steps_10000.pth',
                     '_t5_finetuned_steps_12000.pth',
@@ -170,7 +170,7 @@ def checkpoint_results(run,models_info):
 
             for chk_point in checkpoints: #iterate through each check point
                 file_name = model_name.lower()+chk_point
-                
+
                 file_path = os.path.join(curr_folder,file_name)
                 t5_finetuned = load_model(file_path,model_name)
                 
