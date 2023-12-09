@@ -84,7 +84,7 @@ def validation_loop(t5,tokenizer,metric,eval_dataloader,device):
         eval_outputs = t5(**eval_batch)
         eval_loss = eval_outputs.loss
         epoch_eval_loss.append(eval_loss.item())
-        eval_batch_pred_tensors = t5.module.generate(eval_batch['input_ids'],max_length=chk_config.MAX_TARGET_LENGTH)
+        eval_batch_pred_tensors = t5.generate(eval_batch['input_ids'],max_length=chk_config.MAX_TARGET_LENGTH)
         val_rouge_step_metric = compute_metrics(eval_batch_pred_tensors.cpu(), eval_batch['labels'].cpu(), tokenizer, metric)
         eval_dict_list.append(val_rouge_step_metric)
     mean_eval_loss = sum(epoch_eval_loss)/len(epoch_eval_loss)
@@ -94,7 +94,7 @@ def testing_loop(t5,tokenizer,metric,test_dataloader,device):
     test_dict_list = []
     for test_batch in test_dataloader:
         test_batch = {k: v.to(device) for k, v in test_batch.items()}
-        test_batch_pred_tensors = t5.module.generate(test_batch['input_ids'],max_length=chk_config.MAX_TARGET_LENGTH)
+        test_batch_pred_tensors = t5.generate(test_batch['input_ids'],max_length=chk_config.MAX_TARGET_LENGTH)
         test_dict_list.append(compute_metrics(test_batch_pred_tensors.cpu(),test_batch['labels'].cpu(),tokenizer,metric))
     
     return test_dict_list
@@ -149,10 +149,11 @@ def checkpoint_results(run):
                 
                 t5_finetuned.to(device)
                 
-                m_name,_,_,step_type,step_size = t5_finetuned.split('.')[0].split('_') #['gqa', 't5', 'finetuned', 'steps', '100000']
+                m_name,_,_,step_type,step_size = file_name.split('.')[0].split('_') #['gqa', 't5', 'finetuned', 'steps', '100000']
                 assert m_name.upper() == model_name
 
                 t5_finetuned.eval()
+                print(f"Started validation for {file_name}")
                 mean_eval_loss,eval_dict_list = validation_loop(t5_finetuned,tokenizer,metric,eval_dataloader,device)
                 key_names = eval_dict_list[0].keys()
                 val_rouge_dict = {k:get_avg(eval_dict_list,k) for k in key_names}
