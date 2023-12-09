@@ -85,6 +85,7 @@ def validation_loop(t5,tokenizer,metric,eval_dataloader,device):
         eval_outputs = t5(**eval_batch)
         eval_loss = eval_outputs.loss
         epoch_eval_loss.append(eval_loss.item())
+        del eval_outputs
         eval_batch_pred_tensors = t5.generate(eval_batch['input_ids'],max_length=chk_config.MAX_TARGET_LENGTH)
         val_rouge_step_metric = compute_metrics(eval_batch_pred_tensors.cpu(), eval_batch['labels'].cpu(), tokenizer, metric)
         eval_dict_list.append(val_rouge_step_metric)
