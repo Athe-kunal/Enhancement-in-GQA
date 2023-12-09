@@ -20,6 +20,6 @@ if __name__ == '__main__':
     #     artifact = wandb.Artifact(name=model_file,type="model")
     #     artifact.add_file(local_path=os.path.join(dir_name,model_file))
     #     run.log_artifact(artifact)
-    artifact = wandb.Artifact(name=dir_name)
+    artifact = wandb.Artifact(name=dir_name,type="model")
     artifact.add_dir(local_path=dir_name)
     run.log_artifact(artifact)
