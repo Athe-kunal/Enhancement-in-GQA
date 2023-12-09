@@ -79,7 +79,7 @@ def compute_metrics(predictions,labels,tokenizer,metric):
 def validation_loop(t5,tokenizer,metric,eval_dataloader,device):
     epoch_eval_loss = []
     eval_dict_list = []
-    for eval_batch in eval_dataloader:
+    for eval_batch in tqdm(eval_dataloader):
         eval_batch = {k: v.to(device) for k, v in eval_batch.items()}
         eval_outputs = t5(**eval_batch)
         eval_loss = eval_outputs.loss
@@ -92,7 +92,7 @@ def validation_loop(t5,tokenizer,metric,eval_dataloader,device):
 
 def testing_loop(t5,tokenizer,metric,test_dataloader,device):
     test_dict_list = []
-    for test_batch in test_dataloader:
+    for test_batch in tqdm(test_dataloader):
         test_batch = {k: v.to(device) for k, v in test_batch.items()}
         test_batch_pred_tensors = t5.generate(test_batch['input_ids'],max_length=chk_config.MAX_TARGET_LENGTH)
         test_dict_list.append(compute_metrics(test_batch_pred_tensors.cpu(),test_batch['labels'].cpu(),tokenizer,metric))
@@ -165,7 +165,7 @@ def checkpoint_results(run):
                 print(f'Model name:{model_name} file_name: {file_name} val rogue {val_rouge_dict}')
                 
                 for metric_name, metric_value in val_rouge_dict.items():
-                    run.log({"metric": "val_" + metric_name, "value": metric_value, "model": model_name, "step": int(step_size)})
+                    run.log({"val_" + metric_name: metric_value, "model": model_name, "step": int(step_size)})
 
                 print(f"Started testing for {file_name}")
                 test_dict_list = testing_loop(t5_finetuned,tokenizer,metric,test_dataloader,device)
@@ -173,10 +173,9 @@ def checkpoint_results(run):
                 test_rouge_dict = {k:get_avg(test_dict_list,k) for k in key_names}
                 
                 print(f'Model name: {model_name} file_name:{file_name} test rogue {test_rouge_dict}')
-                run.log({f"{model_name.lower()}_test_epoch_"+k:v for k,v in test_rouge_dict.items()})
-
+                
                 for metric_name, metric_value in test_rouge_dict.items():
-                    run.log({"metric": "test_" + metric_name, "value": metric_value, "model": model_name.lower(), "step": int(step_size)})
+                    run.log({"test_" + metric_name: metric_value, "model": model_name, "step": int(step_size)})
                 
                 val_results[model_name][step_size] = val_rouge_dict
                 test_results[model_name][step_size] = test_rouge_dict
