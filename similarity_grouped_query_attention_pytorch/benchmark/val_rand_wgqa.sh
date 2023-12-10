@@ -19,4 +19,4 @@ module load python/gpu
 
 
 ######  Job commands go below this line #####
-python ./checkpoint_metrics.py RANDWQGA
+python ./checkpoint_metrics.py RANDWGQA
