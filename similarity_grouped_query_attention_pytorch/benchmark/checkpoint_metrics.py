@@ -155,7 +155,9 @@ def checkpoint_results(run,models_info):
                     '_t5_finetuned_steps_24000.pth',
                     '_t5_finetuned_steps_26000.pth',
                     '_t5_finetuned_epoch_2.pth',]
-
+    
+    os.makedirs('Results',exist_ok=True)
+    
     for model_name in [models_info]:
         model_val_results = {}
         model_test_results = {}
