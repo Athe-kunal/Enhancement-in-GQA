@@ -25,7 +25,7 @@ import torch.nn as nn
 import torch.distributed as dist
 import os
 import shutil
-from torch.utils.data.distributed import DistributedSampler
+# from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoTokenizer, T5Tokenizer
 from t5_SGQA import convert_t5_to_gqa
 
@@ -129,9 +129,10 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
         model_name
     )
     #Initially have similarity as False
+    device = torch.device("cuda")
     t5 = convert_t5_to_gqa(t5,kv_heads=kv_heads,similarity_flag=False)
-    t5.to(rank)
-    t5 = torch.nn.parallel.DistributedDataParallel(t5, device_ids=[rank],find_unused_parameters=True)
+    t5.to(device)
+    # t5 = torch.nn.parallel.DistributedDataParallel(t5, device_ids=[rank],find_unused_parameters=True)
 
     tokenizer =  AutoTokenizer.from_pretrained(model_name,legacy=False)
     data_collator = DataCollatorForSeq2Seq(tokenizer, model=t5)
@@ -158,14 +159,14 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
     tokenized_datasets_test = cnn_data_test.map(preprocess_function, batched=True,remove_columns=['article','highlights','id'],batch_size=config.TOKENIZE_BATCH_SIZE)
 
     
-    train_sampler = DistributedSampler(tokenized_datasets_train)
-    train_dataloader = DataLoader(tokenized_datasets_train, batch_size=config.BATCH_SIZE, sampler=train_sampler, collate_fn=data_collator)
+    # train_sampler = DistributedSampler(tokenized_datasets_train)
+    train_dataloader = DataLoader(tokenized_datasets_train,shuffle=True, batch_size=config.BATCH_SIZE,collate_fn=data_collator)
     
-    eval_sampler = DistributedSampler(tokenized_datasets_val, shuffle=False)
-    eval_dataloader = DataLoader(tokenized_datasets_val, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator,sampler=eval_sampler)
+    # eval_sampler = DistributedSampler(tokenized_datasets_val, shuffle=False)
+    eval_dataloader = DataLoader(tokenized_datasets_val, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator)
     
-    test_sampler = DistributedSampler(tokenized_datasets_test, shuffle=False)
-    test_dataloader = DataLoader(tokenized_datasets_test, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator,sampler=test_sampler)
+    # test_sampler = DistributedSampler(tokenized_datasets_test, shuffle=False)
+    test_dataloader = DataLoader(tokenized_datasets_test, batch_size=config.VAL_BATCH_SIZE,collate_fn=data_collator)
 
     num_training_steps = config.NUM_EPOCHS * len(train_dataloader)
     optimizer = AdamW(t5.parameters(), lr=config.LEARNING_RATE )
@@ -196,11 +197,12 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             progress_bar.update(1)
             steps+=1
             if steps%time_interval==0:
-                torch.save(t5.module.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_step_{epoch}_before.pth")
+                torch.save(t5.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_step_{epoch}_before.pth")
                 t5 = repeat_kv_heads(t5.module,d_model=512,kv_heads=kv_heads,n_heads=8)
                 t5 = convert_t5_to_gqa(t5,kv_heads=kv_heads,similarity_flag=similarity_flag,inplace=True)
-                t5 = torch.nn.parallel.DistributedDataParallel(t5, device_ids=[rank],find_unused_parameters=True)
-                torch.save(t5.module.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_step_{epoch}_after.pth")
+                t5.to(device)
+                # t5 = torch.nn.parallel.DistributedDataParallel(t5, device_ids=[rank],find_unused_parameters=True)
+                torch.save(t5.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_step_{epoch}_after.pth")
 
                 
         mean_train_loss = sum(epoch_train_loss)/len(epoch_train_loss)
@@ -232,7 +234,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             
         if rank==0:
             t5.eval()
-            torch.save(t5.module.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_epoch_{epoch}.pth")
+            torch.save(t5.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_epoch_{epoch}.pth")
 
     return val_rouge_dict,test_rouge_dict
 
