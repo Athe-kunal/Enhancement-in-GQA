@@ -12,3 +12,6 @@ evaluate
 
 #tokenizer
 sentencepiece
+
+#torch
+torch
