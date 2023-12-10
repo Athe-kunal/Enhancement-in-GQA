@@ -64,7 +64,7 @@ def validation_loop(t5,tokenizer,metric,eval_dataloader,step,device):
         eval_outputs = t5(**eval_batch)
         eval_loss = eval_outputs.loss
         epoch_eval_loss.append(eval_loss.item())
-        eval_batch_pred_tensors = t5.module.generate(eval_batch['input_ids'],max_length=config.MAX_TARGET_LENGTH)
+        eval_batch_pred_tensors = t5.generate(eval_batch['input_ids'],max_length=config.MAX_TARGET_LENGTH)
         val_rouge_step_metric = compute_metrics(eval_batch_pred_tensors.cpu(), eval_batch['labels'].cpu(), tokenizer, metric)
         eval_dict_list.append(val_rouge_step_metric)
     mean_eval_loss = sum(epoch_eval_loss)/len(epoch_eval_loss)
@@ -74,7 +74,7 @@ def testing_loop(t5,tokenizer,metric,test_dataloader,device):
     test_dict_list = []
     for test_batch in test_dataloader:
         test_batch = {k: v.to(device) for k, v in test_batch.items()}
-        test_batch_pred_tensors = t5.module.generate(test_batch['input_ids'],max_length=config.MAX_TARGET_LENGTH)
+        test_batch_pred_tensors = t5.generate(test_batch['input_ids'],max_length=config.MAX_TARGET_LENGTH)
         test_dict_list.append(compute_metrics(test_batch_pred_tensors.cpu(),test_batch['labels'].cpu(),tokenizer,metric))
     
     return test_dict_list
@@ -198,7 +198,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
             steps+=1
             if steps%time_interval==0:
                 torch.save(t5.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_step_{epoch}_before.pth")
-                t5 = repeat_kv_heads(t5.module,d_model=512,kv_heads=kv_heads,n_heads=8)
+                t5 = repeat_kv_heads(t5,d_model=512,kv_heads=kv_heads,n_heads=8)
                 t5 = convert_t5_to_gqa(t5,kv_heads=kv_heads,similarity_flag=similarity_flag,inplace=True)
                 # t5.to(device)
                 # t5 = torch.nn.parallel.DistributedDataParallel(t5, device_ids=[rank],find_unused_parameters=True)
