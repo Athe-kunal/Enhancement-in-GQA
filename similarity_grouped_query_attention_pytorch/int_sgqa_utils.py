@@ -130,7 +130,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
     )
     #Initially have similarity as False
     device = torch.device("cuda")
-    t5 = convert_t5_to_gqa(t5,kv_heads=kv_heads,similarity_flag=False)
+    t5 = convert_t5_to_gqa(t5,kv_heads=kv_heads,similarity_flag=False,inplace=True)
     t5.to(device)
     # t5 = torch.nn.parallel.DistributedDataParallel(t5, device_ids=[rank],find_unused_parameters=True)
 
@@ -200,7 +200,7 @@ def train(rank,world_size,kv_heads:int,logging_name:str,run,model_name:str=confi
                 torch.save(t5.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_step_{epoch}_before.pth")
                 t5 = repeat_kv_heads(t5.module,d_model=512,kv_heads=kv_heads,n_heads=8)
                 t5 = convert_t5_to_gqa(t5,kv_heads=kv_heads,similarity_flag=similarity_flag,inplace=True)
-                t5.to(device)
+                # t5.to(device)
                 # t5 = torch.nn.parallel.DistributedDataParallel(t5, device_ids=[rank],find_unused_parameters=True)
                 torch.save(t5.state_dict(),f"{dir}/{logging_name.lower()}_t5_finetuned_step_{epoch}_after.pth")
 
