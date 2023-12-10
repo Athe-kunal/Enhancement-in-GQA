@@ -39,7 +39,7 @@ def load_model(checkpoint_path,model_name):
         t5_finetuned = convert_t5_to_wgqa(t5,kv_heads=4,weight_flag=True,if_random=False)
     elif model_name == 'SIMGQA':
         t5_finetuned = convert_t5_to_gqa(t5,kv_heads=4,similarity_flag=True)
-    elif model_name == 'RAND_WGQA':
+    elif model_name == 'RANDWGQA':
         t5_finetuned = convert_t5_to_wgqa(t5,kv_heads=4,weight_flag=True,if_random=True)
     elif model_name == 'MQA':
         t5_finetuned = convert_t5_to_gqa(t5,kv_heads=1,similarity_flag=False)
@@ -157,7 +157,7 @@ def checkpoint_results(run,models_info):
                     '_t5_finetuned_epoch_2.pth',]
     
     os.makedirs('Results',exist_ok=True)
-    
+
     for model_name in [models_info]:
         model_val_results = {}
         model_test_results = {}
