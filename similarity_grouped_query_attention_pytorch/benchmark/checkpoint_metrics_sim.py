@@ -33,18 +33,7 @@ import json
 def load_model(checkpoint_path,model_name):
     t5: T5ForConditionalGeneration = T5ForConditionalGeneration.from_pretrained("t5-small")
 
-    if model_name == 'GQA':
-        t5_finetuned = convert_t5_to_gqa(t5,kv_heads=4,similarity_flag=False)
-    elif model_name == 'WGQA':
-        t5_finetuned = convert_t5_to_wgqa(t5,kv_heads=4,weight_flag=True,if_random=False)
-    elif model_name == 'SIMGQA':
-        t5_finetuned = convert_t5_to_gqa(t5,kv_heads=4,similarity_flag=True)
-    elif model_name == 'RAND_WGQA':
-        t5_finetuned = convert_t5_to_wgqa(t5,kv_heads=4,weight_flag=True,if_random=True)
-    elif model_name == 'MQA':
-        t5_finetuned = convert_t5_to_gqa(t5,kv_heads=1,similarity_flag=False)
-    else:
-        print(f'{model_name} not found!')
+    t5_finetuned = convert_t5_to_gqa(t5,kv_heads=4,similarity_flag=False)
     
     del t5
     # Load state dict
@@ -139,6 +128,18 @@ def checkpoint_results(run,models_info):
     val_results = {}
     test_results = {}
     #iterate through each model
+    checkpoints = ['_simgqa_t5_finetuned_step_0_before.pth',
+                   '_simgqa_t5_finetuned_step_0_after.pth',
+                   '_simgqa_t5_finetuned_epoch_0.pth',
+                   '_simgqa_t5_finetuned_step_1_before.pth',
+                   '_simgqa_t5_finetuned_step_1_after.pth',
+                   '_simgqa_t5_finetuned_epoch_1.pth',
+                   '_simgqa_t5_finetuned_step_2_before.pth',
+                   '_simgqa_t5_finetuned_step_2_after.pth',
+                   '_simgqa_t5_finetuned_epoch_2.pth']
+    
+    os.makedirs('Results',exist_ok=True)
+
     for model_name in [models_info]:
         model_val_results = {}
         model_test_results = {}
@@ -151,14 +152,19 @@ def checkpoint_results(run,models_info):
             model_val_results[model_name] = {}
             model_test_results[model_name] = {}
 
-            for file_name in os.listdir(curr_folder): #iterate through each check point
+            for chk_point in checkpoints: #iterate through each check point
+                file_name = model_name.lower()+chk_point
+
                 file_path = os.path.join(curr_folder,file_name)
                 t5_finetuned = load_model(file_path,model_name)
                 
                 t5_finetuned.to(device)
                 
-                m_name,_,_,step_type,step_size = file_name.split('.')[0].split('_') #['gqa', 't5', 'finetuned', 'steps', '100000']
-                assert m_name.upper() == model_name
+                if 'epoch' in chk_point:
+                    _,_,_,_,step_type,step_size= chk_point.split('.')[0].split('_') #_simgqa_t5_finetuned_epoch_2
+                else:
+                    _,_,_,_,step_type,step_size,when = chk_point.split('.')[0].split('_') 
+                    #and _simgqa_t5_finetuned_step_0_before
 
                 t5_finetuned.eval()
                 print(f"Started validation for {file_name}")
@@ -212,7 +218,7 @@ def checkpoint_results(run,models_info):
 if __name__ == '__main__':
 
     if len(sys.argv) != 2:
-        raise Exception("Usage: model.py model_name")
+        raise Exception("Usage: model.py long_int")
         
     (_, model_name) = sys.argv
     print(model_name)
